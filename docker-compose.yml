@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  vault:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vault-platform
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:./vault.db
+      - ADMIN_PATH=${ADMIN_PATH:-sys-vault-admin}
+      - ADMIN_PASSPHRASE_HASH=${ADMIN_PASSPHRASE_HASH:-$2a$10$eGoTwEQOdT6wQbHE0hNrPezH6I51CjnTkDO9b/j7uRBohwqyGuxgm}
+      - ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET:-vault-production-secret-min-32-chars-length}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - LLM_API_BASE=${LLM_API_BASE:-https://api.openai.com/v1}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+    volumes:
+      - vault-data:/app/prisma
+      - ./vault.db:/app/vault.db
+
+volumes:
+  vault-data:

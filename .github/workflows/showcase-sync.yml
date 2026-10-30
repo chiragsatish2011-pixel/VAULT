@@ -1,0 +1,27 @@
+name: Showcase Auto-Sync & Capture
+
+# Drop this workflow into any of your GitHub repositories.
+# Whenever you push code, it pings your live showcase to update commit stats and re-capture 16:9 banner!
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Showcase Ingestion Webhook
+        run: |
+          curl -X POST "https://your-showcase-app.vercel.app/api/webhooks/github" \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -d '{
+              "repository": {
+                "name": "${{ github.event.repository.name }}",
+                "html_url": "${{ github.event.repository.html_url }}",
+                "homepage": "${{ github.event.repository.homepage }}",
+                "description": "${{ github.event.repository.description }}"
+              }
+            }'

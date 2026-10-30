@@ -1,0 +1,2627 @@
+{
+  "nomin-ai-nine": {
+    "repoName": "chiragsatish2011-pixel/Nomin",
+    "url": "https://github.com/chiragsatish2011-pixel/Nomin",
+    "description": "A very advanced Ai coding agent build and ran through Nomin Comapany",
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-09-27T10:28:37Z",
+    "tree": [
+      {
+        "path": ".claude",
+        "type": "tree"
+      },
+      {
+        "path": ".claude/launch.json",
+        "type": "blob",
+        "size": 182
+      },
+      {
+        "path": ".env.example",
+        "type": "blob",
+        "size": 1682
+      },
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 75
+      },
+      {
+        "path": "DESIGN-claude.md",
+        "type": "blob",
+        "size": 33586
+      },
+      {
+        "path": "DESIGN-kraken.md",
+        "type": "blob",
+        "size": 4350
+      },
+      {
+        "path": "README.md",
+        "type": "blob",
+        "size": 17299
+      },
+      {
+        "path": "api",
+        "type": "tree"
+      },
+      {
+        "path": "api/chat.ts",
+        "type": "blob",
+        "size": 453
+      },
+      {
+        "path": "api/evidence.ts",
+        "type": "blob",
+        "size": 465
+      },
+      {
+        "path": "api/files.ts",
+        "type": "blob",
+        "size": 429
+      },
+      {
+        "path": "api/health.ts",
+        "type": "blob",
+        "size": 498
+      },
+      {
+        "path": "api/review.ts",
+        "type": "blob",
+        "size": 459
+      },
+      {
+        "path": "api/vision.ts",
+        "type": "blob",
+        "size": 459
+      },
+      {
+        "path": "index.html",
+        "type": "blob",
+        "size": 1709
+      },
+      {
+        "path": "package-lock.json",
+        "type": "blob",
+        "size": 63014
+      },
+      {
+        "path": "package.json",
+        "type": "blob",
+        "size": 1106
+      },
+      {
+        "path": "public",
+        "type": "tree"
+      },
+      {
+        "path": "public/favicon.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/icon-192.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/icon-512.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/icon-maskable-512.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/logo-mark-black.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/logo-mark.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/logo.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/manifest.webmanifest",
+        "type": "blob",
+        "size": 680
+      },
+      {
+        "path": "public/sw.js",
+        "type": "blob",
+        "size": 2201
+      },
+      {
+        "path": "src",
+        "type": "tree"
+      },
+      {
+        "path": "src/App.tsx",
+        "type": "blob",
+        "size": 43772
+      },
+      {
+        "path": "src/cli",
+        "type": "tree"
+      },
+      {
+        "path": "src/cli/bin.ts",
+        "type": "blob",
+        "size": 1184
+      },
+      {
+        "path": "src/cli/main.ts",
+        "type": "blob",
+        "size": 11127
+      },
+      {
+        "path": "src/cli/tree.ts",
+        "type": "blob",
+        "size": 4324
+      },
+      {
+        "path": "src/components",
+        "type": "tree"
+      },
+      {
+        "path": "src/components/Canvas.tsx",
+        "type": "blob",
+        "size": 14732
+      },
+      {
+        "path": "src/components/CommandPalette.tsx",
+        "type": "blob",
+        "size": 5207
+      },
+      {
+        "path": "src/components/Composer.tsx",
+        "type": "blob",
+        "size": 13705
+      },
+      {
+        "path": "src/components/Mark.tsx",
+        "type": "blob",
+        "size": 1644
+      },
+      {
+        "path": "src/components/Markdown.tsx",
+        "type": "blob",
+        "size": 6574
+      },
+      {
+        "path": "src/components/Orb3D.tsx",
+        "type": "blob",
+        "size": 8482
+      },
+      {
+        "path": "src/components/ParticleOrb.tsx",
+        "type": "blob",
+        "size": 4306
+      },
+      {
+        "path": "src/components/Pipeline.tsx",
+        "type": "blob",
+        "size": 3801
+      },
+      {
+        "path": "src/components/PlanCard.tsx",
+        "type": "blob",
+        "size": 3431
+      },
+      {
+        "path": "src/components/QuestionCard.tsx",
+        "type": "blob",
+        "size": 4308
+      },
+      {
+        "path": "src/components/ReportCard.tsx",
+        "type": "blob",
+        "size": 6796
+      },
+      {
+        "path": "src/components/Templates.tsx",
+        "type": "blob",
+        "size": 6151
+      },
+      {
+        "path": "src/components/ThinkingBlock.tsx",
+        "type": "blob",
+        "size": 3401
+      },
+      {
+        "path": "src/components/ThinkingSteps.tsx",
+        "type": "blob",
+        "size": 8595
+      },
+      {
+        "path": "src/lib",
+        "type": "tree"
+      },
+      {
+        "path": "src/lib/artifacts.ts",
+        "type": "blob",
+        "size": 7940
+      }
+    ],
+    "rawFiles": [
+      ".claude/launch.json",
+      ".env.example",
+      ".gitignore",
+      "DESIGN-claude.md",
+      "DESIGN-kraken.md",
+      "README.md",
+      "api/chat.ts",
+      "api/evidence.ts",
+      "api/files.ts",
+      "api/health.ts",
+      "api/review.ts",
+      "api/vision.ts",
+      "index.html",
+      "package-lock.json",
+      "package.json"
+    ]
+  },
+  "vaayu-workspace": {
+    "repoName": "chiragsatish2011-pixel/Vaayu-Workspace",
+    "url": "https://github.com/chiragsatish2011-pixel/Vaayu-Workspace",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-09-11T16:11:05Z",
+    "tree": [
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 480
+      },
+      {
+        "path": "AGENTS.md",
+        "type": "blob",
+        "size": 678
+      },
+      {
+        "path": "CLAUDE.md",
+        "type": "blob",
+        "size": 11
+      },
+      {
+        "path": "DESIGN-cohere.md",
+        "type": "blob",
+        "size": 20020
+      },
+      {
+        "path": "DESIGN-minimax.md",
+        "type": "blob",
+        "size": 37920
+      },
+      {
+        "path": "README.md",
+        "type": "blob",
+        "size": 9971
+      },
+      {
+        "path": "app",
+        "type": "tree"
+      },
+      {
+        "path": "app/admin",
+        "type": "tree"
+      },
+      {
+        "path": "app/admin/drive-setup",
+        "type": "tree"
+      },
+      {
+        "path": "app/admin/drive-setup/page.tsx",
+        "type": "blob",
+        "size": 17296
+      },
+      {
+        "path": "app/admin/loading.tsx",
+        "type": "blob",
+        "size": 175
+      },
+      {
+        "path": "app/admin/page.tsx",
+        "type": "blob",
+        "size": 5227
+      },
+      {
+        "path": "app/api",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/admin",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/admin/checkpoints-sheet",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/admin/checkpoints-sheet/route.ts",
+        "type": "blob",
+        "size": 2089
+      },
+      {
+        "path": "app/api/admin/users",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/admin/users/route.ts",
+        "type": "blob",
+        "size": 7189
+      },
+      {
+        "path": "app/api/auth",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/auth/[...nextauth]",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/auth/[...nextauth]/route.ts",
+        "type": "blob",
+        "size": 161
+      },
+      {
+        "path": "app/api/calls",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/calls/rooms",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/calls/rooms/route.ts",
+        "type": "blob",
+        "size": 578
+      },
+      {
+        "path": "app/api/chat",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/archive",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/archive/route.ts",
+        "type": "blob",
+        "size": 3886
+      },
+      {
+        "path": "app/api/chat/conversations",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/conversations/[id]",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/leave",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/leave/route.ts",
+        "type": "blob",
+        "size": 2765
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/members",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/members/route.ts",
+        "type": "blob",
+        "size": 6367
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/messages",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/messages/[messageId]",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/messages/[messageId]/reactions",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/messages/[messageId]/reactions/route.ts",
+        "type": "blob",
+        "size": 3494
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/messages/[messageId]/route.ts",
+        "type": "blob",
+        "size": 5653
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/messages/reactions",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/messages/reactions/route.ts",
+        "type": "blob",
+        "size": 1723
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/messages/route.ts",
+        "type": "blob",
+        "size": 8388
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/read-state",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/read-state/route.ts",
+        "type": "blob",
+        "size": 1630
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/read",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/read/route.ts",
+        "type": "blob",
+        "size": 2644
+      },
+      {
+        "path": "app/api/chat/conversations/[id]/route.ts",
+        "type": "blob",
+        "size": 1294
+      },
+      {
+        "path": "app/api/chat/conversations/route.ts",
+        "type": "blob",
+        "size": 7102
+      },
+      {
+        "path": "app/api/chat/messages",
+        "type": "tree"
+      },
+      {
+        "path": "app/api/chat/messages/route.ts",
+        "type": "blob",
+        "size": 2098
+      },
+      {
+        "path": "app/api/chat/presence",
+        "type": "tree"
+      }
+    ],
+    "rawFiles": [
+      ".gitignore",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "DESIGN-cohere.md",
+      "DESIGN-minimax.md",
+      "README.md",
+      "app/admin/drive-setup/page.tsx",
+      "app/admin/loading.tsx",
+      "app/admin/page.tsx",
+      "app/api/admin/checkpoints-sheet/route.ts",
+      "app/api/admin/users/route.ts",
+      "app/api/auth/[...nextauth]/route.ts",
+      "app/api/calls/rooms/route.ts",
+      "app/api/chat/archive/route.ts",
+      "app/api/chat/conversations/[id]/leave/route.ts"
+    ]
+  },
+  "chirag-sandy": {
+    "repoName": "chiragsatish2011-pixel/Portfolio",
+    "url": "https://github.com/chiragsatish2011-pixel/Portfolio",
+    "description": "A highly professional Portfolio built and designed by Chirag S",
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-08-11T14:30:16Z",
+    "tree": [
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 180
+      },
+      {
+        "path": ".oxlintrc.json",
+        "type": "blob",
+        "size": 231
+      },
+      {
+        "path": "index.html",
+        "type": "blob",
+        "size": 309
+      },
+      {
+        "path": "package-lock.json",
+        "type": "blob",
+        "size": 38364
+      },
+      {
+        "path": "package.json",
+        "type": "blob",
+        "size": 399
+      },
+      {
+        "path": "public",
+        "type": "tree"
+      },
+      {
+        "path": "public/gallery",
+        "type": "tree"
+      },
+      {
+        "path": "public/gallery/arts.webp",
+        "type": "blob",
+        "size": 67266
+      },
+      {
+        "path": "public/gallery/code.webp",
+        "type": "blob",
+        "size": 166094
+      },
+      {
+        "path": "public/gallery/courtyard.webp",
+        "type": "blob",
+        "size": 188706
+      },
+      {
+        "path": "public/gallery/frames",
+        "type": "tree"
+      },
+      {
+        "path": "public/gallery/frames/benches.webp",
+        "type": "blob",
+        "size": 81668
+      },
+      {
+        "path": "public/gallery/frames/board.webp",
+        "type": "blob",
+        "size": 8378
+      },
+      {
+        "path": "public/gallery/frames/green.webp",
+        "type": "blob",
+        "size": 42078
+      },
+      {
+        "path": "public/gallery/frames/island.webp",
+        "type": "blob",
+        "size": 24288
+      },
+      {
+        "path": "public/gallery/frames/palms.webp",
+        "type": "blob",
+        "size": 27236
+      },
+      {
+        "path": "public/gallery/frames/prism.webp",
+        "type": "blob",
+        "size": 24944
+      },
+      {
+        "path": "public/gallery/frames/ridge.webp",
+        "type": "blob",
+        "size": 20124
+      },
+      {
+        "path": "public/gallery/timeline.webp",
+        "type": "blob",
+        "size": 119092
+      },
+      {
+        "path": "public/person.webp",
+        "type": "blob",
+        "size": 173442
+      },
+      {
+        "path": "public/work",
+        "type": "tree"
+      },
+      {
+        "path": "public/work/documentary.mp4",
+        "type": "blob",
+        "size": 3043259
+      },
+      {
+        "path": "public/work/documentary.webp",
+        "type": "blob",
+        "size": 28570
+      },
+      {
+        "path": "public/work/fusion.mp4",
+        "type": "blob",
+        "size": 1297967
+      },
+      {
+        "path": "public/work/fusion.webp",
+        "type": "blob",
+        "size": 24880
+      },
+      {
+        "path": "public/work/nomin.webp",
+        "type": "blob",
+        "size": 23510
+      },
+      {
+        "path": "public/work/onestage.mp4",
+        "type": "blob",
+        "size": 7409493
+      },
+      {
+        "path": "public/work/onestage.webp",
+        "type": "blob",
+        "size": 39206
+      },
+      {
+        "path": "public/work/otter.mp4",
+        "type": "blob",
+        "size": 1719040
+      },
+      {
+        "path": "public/work/otter.webp",
+        "type": "blob",
+        "size": 14558
+      },
+      {
+        "path": "src",
+        "type": "tree"
+      },
+      {
+        "path": "src/App.jsx",
+        "type": "blob",
+        "size": 435
+      },
+      {
+        "path": "src/components",
+        "type": "tree"
+      },
+      {
+        "path": "src/components/FluidOverlay.css",
+        "type": "blob",
+        "size": 264
+      },
+      {
+        "path": "src/components/FluidOverlay.jsx",
+        "type": "blob",
+        "size": 11045
+      },
+      {
+        "path": "src/components/Footer.css",
+        "type": "blob",
+        "size": 2971
+      },
+      {
+        "path": "src/components/Footer.jsx",
+        "type": "blob",
+        "size": 1701
+      },
+      {
+        "path": "src/components/Logos.jsx",
+        "type": "blob",
+        "size": 2879
+      },
+      {
+        "path": "src/components/SectionMast.css",
+        "type": "blob",
+        "size": 1796
+      },
+      {
+        "path": "src/components/SectionMast.jsx",
+        "type": "blob",
+        "size": 570
+      },
+      {
+        "path": "src/components/Splashes.css",
+        "type": "blob",
+        "size": 1567
+      },
+      {
+        "path": "src/components/Splashes.jsx",
+        "type": "blob",
+        "size": 3948
+      },
+      {
+        "path": "src/data",
+        "type": "tree"
+      },
+      {
+        "path": "src/data/about.js",
+        "type": "blob",
+        "size": 2327
+      },
+      {
+        "path": "src/data/gallery.js",
+        "type": "blob",
+        "size": 1902
+      },
+      {
+        "path": "src/data/projects.js",
+        "type": "blob",
+        "size": 1889
+      },
+      {
+        "path": "src/data/splashes.js",
+        "type": "blob",
+        "size": 2705
+      },
+      {
+        "path": "src/hooks",
+        "type": "tree"
+      },
+      {
+        "path": "src/hooks/useParallax.js",
+        "type": "blob",
+        "size": 811
+      },
+      {
+        "path": "src/index.css",
+        "type": "blob",
+        "size": 1103
+      }
+    ],
+    "rawFiles": [
+      ".gitignore",
+      ".oxlintrc.json",
+      "index.html",
+      "package-lock.json",
+      "package.json",
+      "public/gallery/arts.webp",
+      "public/gallery/code.webp",
+      "public/gallery/courtyard.webp",
+      "public/gallery/frames/benches.webp",
+      "public/gallery/frames/board.webp",
+      "public/gallery/frames/green.webp",
+      "public/gallery/frames/island.webp",
+      "public/gallery/frames/palms.webp",
+      "public/gallery/frames/prism.webp",
+      "public/gallery/frames/ridge.webp"
+    ]
+  },
+  "n8n-local-setup": {
+    "repoName": "chiragsatish2011-pixel/n8n-local-setup",
+    "url": "https://github.com/chiragsatish2011-pixel/n8n-local-setup",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-09-04T11:10:17Z",
+    "tree": [
+      {
+        "path": "index.html",
+        "type": "blob",
+        "size": 59933
+      },
+      {
+        "path": "screenshots",
+        "type": "tree"
+      },
+      {
+        "path": "screenshots/shot-n8n-docs.png",
+        "type": "blob",
+        "size": 143521
+      },
+      {
+        "path": "screenshots/shot-nodejs-home.png",
+        "type": "blob",
+        "size": 292682
+      },
+      {
+        "path": "shot-n8n-docs.png",
+        "type": "blob",
+        "size": 143521
+      },
+      {
+        "path": "shot-nodejs-home.png",
+        "type": "blob",
+        "size": 292682
+      }
+    ],
+    "rawFiles": [
+      "index.html",
+      "screenshots/shot-n8n-docs.png",
+      "screenshots/shot-nodejs-home.png",
+      "shot-n8n-docs.png",
+      "shot-nodejs-home.png"
+    ]
+  },
+  "nomin-spacelab": {
+    "repoName": "chiragsatish2011-pixel/Nomin-Workspace",
+    "url": "https://github.com/chiragsatish2011-pixel/Nomin-Workspace",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-09-20T13:28:20Z",
+    "tree": [
+      {
+        "path": ".claude",
+        "type": "tree"
+      },
+      {
+        "path": ".claude/launch.json",
+        "type": "blob",
+        "size": 205
+      },
+      {
+        "path": ".env.example",
+        "type": "blob",
+        "size": 236
+      },
+      {
+        "path": ".github",
+        "type": "tree"
+      },
+      {
+        "path": ".github/workflows",
+        "type": "tree"
+      },
+      {
+        "path": ".github/workflows/desktop.yml",
+        "type": "blob",
+        "size": 1167
+      },
+      {
+        "path": ".github/workflows/mobile.yml",
+        "type": "blob",
+        "size": 1026
+      },
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 738
+      },
+      {
+        "path": "AGENTS.md",
+        "type": "blob",
+        "size": 678
+      },
+      {
+        "path": "CLAUDE.md",
+        "type": "blob",
+        "size": 11
+      },
+      {
+        "path": "DESIGN-cohere.md",
+        "type": "blob",
+        "size": 20020
+      },
+      {
+        "path": "DESIGN-kraken.md",
+        "type": "blob",
+        "size": 4832
+      },
+      {
+        "path": "DESIGN-minimax.md",
+        "type": "blob",
+        "size": 37920
+      },
+      {
+        "path": "README.md",
+        "type": "blob",
+        "size": 10489
+      },
+      {
+        "path": "android",
+        "type": "tree"
+      },
+      {
+        "path": "android/.gitignore",
+        "type": "blob",
+        "size": 1824
+      },
+      {
+        "path": "android/app",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/.gitignore",
+        "type": "blob",
+        "size": 26
+      },
+      {
+        "path": "android/app/build.gradle",
+        "type": "blob",
+        "size": 2136
+      },
+      {
+        "path": "android/app/proguard-rules.pro",
+        "type": "blob",
+        "size": 751
+      },
+      {
+        "path": "android/app/src",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/androidTest",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/androidTest/java",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/androidTest/java/com",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/androidTest/java/com/getcapacitor",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/androidTest/java/com/getcapacitor/myapp",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java",
+        "type": "blob",
+        "size": 774
+      },
+      {
+        "path": "android/app/src/main",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/AndroidManifest.xml",
+        "type": "blob",
+        "size": 1537
+      },
+      {
+        "path": "android/app/src/main/assets",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/assets/.gitkeep",
+        "type": "blob",
+        "size": 0
+      },
+      {
+        "path": "android/app/src/main/java",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/java/com",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/java/com/nomin",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/java/com/nomin/workspace",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/java/com/nomin/workspace/MainActivity.java",
+        "type": "blob",
+        "size": 123
+      },
+      {
+        "path": "android/app/src/main/res",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/res/drawable-land-hdpi",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/res/drawable-land-hdpi/splash.png",
+        "type": "blob",
+        "size": 7705
+      },
+      {
+        "path": "android/app/src/main/res/drawable-land-mdpi",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/res/drawable-land-mdpi/splash.png",
+        "type": "blob",
+        "size": 4040
+      },
+      {
+        "path": "android/app/src/main/res/drawable-land-xhdpi",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/res/drawable-land-xhdpi/splash.png",
+        "type": "blob",
+        "size": 9251
+      },
+      {
+        "path": "android/app/src/main/res/drawable-land-xxhdpi",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/res/drawable-land-xxhdpi/splash.png",
+        "type": "blob",
+        "size": 13984
+      },
+      {
+        "path": "android/app/src/main/res/drawable-land-xxxhdpi",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/res/drawable-land-xxxhdpi/splash.png",
+        "type": "blob",
+        "size": 17683
+      },
+      {
+        "path": "android/app/src/main/res/drawable-port-hdpi",
+        "type": "tree"
+      },
+      {
+        "path": "android/app/src/main/res/drawable-port-hdpi/splash.png",
+        "type": "blob",
+        "size": 7934
+      },
+      {
+        "path": "android/app/src/main/res/drawable-port-mdpi",
+        "type": "tree"
+      }
+    ],
+    "rawFiles": [
+      ".claude/launch.json",
+      ".env.example",
+      ".github/workflows/desktop.yml",
+      ".github/workflows/mobile.yml",
+      ".gitignore",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "DESIGN-cohere.md",
+      "DESIGN-kraken.md",
+      "DESIGN-minimax.md",
+      "README.md",
+      "android/.gitignore",
+      "android/app/.gitignore",
+      "android/app/build.gradle",
+      "android/app/proguard-rules.pro"
+    ]
+  },
+  "tag-along-html": {
+    "repoName": "chiragsatish2011-pixel/HTML-work",
+    "url": "https://github.com/chiragsatish2011-pixel/HTML-work",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-09-08T08:55:21Z",
+    "tree": [
+      {
+        "path": "index (1).html",
+        "type": "blob",
+        "size": 32687
+      },
+      {
+        "path": "index.html",
+        "type": "blob",
+        "size": 32687
+      }
+    ],
+    "rawFiles": [
+      "index (1).html",
+      "index.html"
+    ]
+  },
+  "website1-brand": {
+    "repoName": "chiragsatish2011-pixel/webiste1",
+    "url": "https://github.com/chiragsatish2011-pixel/webiste1",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-08-30T15:05:24Z",
+    "tree": [
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 253
+      },
+      {
+        "path": ".oxlintrc.json",
+        "type": "blob",
+        "size": 245
+      },
+      {
+        "path": "README.md",
+        "type": "blob",
+        "size": 1278
+      },
+      {
+        "path": "index.html",
+        "type": "blob",
+        "size": 296
+      },
+      {
+        "path": "package-lock.json",
+        "type": "blob",
+        "size": 82946
+      },
+      {
+        "path": "package.json",
+        "type": "blob",
+        "size": 701
+      },
+      {
+        "path": "postcss.config.js",
+        "type": "blob",
+        "size": 80
+      },
+      {
+        "path": "public",
+        "type": "tree"
+      },
+      {
+        "path": "public/build-mask.png",
+        "type": "blob",
+        "size": 1144511
+      },
+      {
+        "path": "public/build.svg",
+        "type": "blob",
+        "size": 1068
+      },
+      {
+        "path": "public/hero-bg.png",
+        "type": "blob",
+        "size": 2674000
+      },
+      {
+        "path": "public/icons.svg",
+        "type": "blob",
+        "size": 5031
+      },
+      {
+        "path": "public/logo.png",
+        "type": "blob",
+        "size": 4316
+      },
+      {
+        "path": "src",
+        "type": "tree"
+      },
+      {
+        "path": "src/App.tsx",
+        "type": "blob",
+        "size": 50709
+      },
+      {
+        "path": "src/assets",
+        "type": "tree"
+      },
+      {
+        "path": "src/assets/hero.png",
+        "type": "blob",
+        "size": 13057
+      },
+      {
+        "path": "src/assets/react.svg",
+        "type": "blob",
+        "size": 4126
+      },
+      {
+        "path": "src/assets/vite.svg",
+        "type": "blob",
+        "size": 8709
+      },
+      {
+        "path": "src/index.css",
+        "type": "blob",
+        "size": 2698
+      },
+      {
+        "path": "src/main.tsx",
+        "type": "blob",
+        "size": 230
+      },
+      {
+        "path": "tailwind.config.js",
+        "type": "blob",
+        "size": 530
+      },
+      {
+        "path": "tsconfig.app.json",
+        "type": "blob",
+        "size": 655
+      },
+      {
+        "path": "tsconfig.json",
+        "type": "blob",
+        "size": 119
+      },
+      {
+        "path": "tsconfig.node.json",
+        "type": "blob",
+        "size": 558
+      },
+      {
+        "path": "vite.config.ts",
+        "type": "blob",
+        "size": 161
+      }
+    ],
+    "rawFiles": [
+      ".gitignore",
+      ".oxlintrc.json",
+      "README.md",
+      "index.html",
+      "package-lock.json",
+      "package.json",
+      "postcss.config.js",
+      "public/build-mask.png",
+      "public/build.svg",
+      "public/hero-bg.png",
+      "public/icons.svg",
+      "public/logo.png",
+      "src/App.tsx",
+      "src/assets/hero.png",
+      "src/assets/react.svg"
+    ]
+  },
+  "nc-studio": {
+    "repoName": "chiragsatish2011-pixel/N-C-Studio",
+    "url": "https://github.com/chiragsatish2011-pixel/N-C-Studio",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-09-20T11:53:34Z",
+    "tree": [
+      {
+        "path": ".claude",
+        "type": "tree"
+      },
+      {
+        "path": ".claude/launch.json",
+        "type": "blob",
+        "size": 181
+      },
+      {
+        "path": ".env.example",
+        "type": "blob",
+        "size": 502
+      },
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 667
+      },
+      {
+        "path": "api",
+        "type": "tree"
+      },
+      {
+        "path": "api/add-site.js",
+        "type": "blob",
+        "size": 7372
+      },
+      {
+        "path": "index.html",
+        "type": "blob",
+        "size": 1030
+      },
+      {
+        "path": "package-lock.json",
+        "type": "blob",
+        "size": 103140
+      },
+      {
+        "path": "package.json",
+        "type": "blob",
+        "size": 648
+      },
+      {
+        "path": "public",
+        "type": "tree"
+      },
+      {
+        "path": "public/beat-track.mp3",
+        "type": "blob",
+        "size": 14920492
+      },
+      {
+        "path": "public/covers",
+        "type": "tree"
+      },
+      {
+        "path": "public/covers/chirag-sandy.webp",
+        "type": "blob",
+        "size": 25722
+      },
+      {
+        "path": "public/covers/garts-seven.webp",
+        "type": "blob",
+        "size": 116294
+      },
+      {
+        "path": "public/covers/nishanth-demo-website-1.webp",
+        "type": "blob",
+        "size": 20682
+      },
+      {
+        "path": "public/covers/nomin-company.webp",
+        "type": "blob",
+        "size": 21326
+      },
+      {
+        "path": "public/covers/nomin-workstation.webp",
+        "type": "blob",
+        "size": 28310
+      },
+      {
+        "path": "public/covers/showbook-xi.webp",
+        "type": "blob",
+        "size": 23772
+      },
+      {
+        "path": "public/covers/vaayu-workspace.webp",
+        "type": "blob",
+        "size": 37166
+      },
+      {
+        "path": "public/covers/vaayulabs.webp",
+        "type": "blob",
+        "size": 76960
+      },
+      {
+        "path": "public/duo-crouch.webp",
+        "type": "blob",
+        "size": 303728
+      },
+      {
+        "path": "public/duo-tools.webp",
+        "type": "blob",
+        "size": 314050
+      },
+      {
+        "path": "public/hero.webp",
+        "type": "blob",
+        "size": 376870
+      },
+      {
+        "path": "public/qr.svg",
+        "type": "blob",
+        "size": 5402
+      },
+      {
+        "path": "scripts",
+        "type": "tree"
+      },
+      {
+        "path": "scripts/optimize-frames.mjs",
+        "type": "blob",
+        "size": 1234
+      },
+      {
+        "path": "scripts/sync-sites.mjs",
+        "type": "blob",
+        "size": 4364
+      },
+      {
+        "path": "src",
+        "type": "tree"
+      },
+      {
+        "path": "src/App.jsx",
+        "type": "blob",
+        "size": 35042
+      },
+      {
+        "path": "src/BeatShake.jsx",
+        "type": "blob",
+        "size": 2999
+      },
+      {
+        "path": "src/CircularGallery.jsx",
+        "type": "blob",
+        "size": 15017
+      },
+      {
+        "path": "src/OwnerSync.jsx",
+        "type": "blob",
+        "size": 11060
+      },
+      {
+        "path": "src/content",
+        "type": "tree"
+      },
+      {
+        "path": "src/content/sites.data.json",
+        "type": "blob",
+        "size": 3486
+      },
+      {
+        "path": "src/content/sites.js",
+        "type": "blob",
+        "size": 543
+      },
+      {
+        "path": "src/content/sites.json",
+        "type": "blob",
+        "size": 2758
+      },
+      {
+        "path": "src/index.css",
+        "type": "blob",
+        "size": 33545
+      },
+      {
+        "path": "src/main.jsx",
+        "type": "blob",
+        "size": 1669
+      },
+      {
+        "path": "vercel.json",
+        "type": "blob",
+        "size": 62
+      },
+      {
+        "path": "vite.config.js",
+        "type": "blob",
+        "size": 192
+      }
+    ],
+    "rawFiles": [
+      ".claude/launch.json",
+      ".env.example",
+      ".gitignore",
+      "api/add-site.js",
+      "index.html",
+      "package-lock.json",
+      "package.json",
+      "public/beat-track.mp3",
+      "public/covers/chirag-sandy.webp",
+      "public/covers/garts-seven.webp",
+      "public/covers/nishanth-demo-website-1.webp",
+      "public/covers/nomin-company.webp",
+      "public/covers/nomin-workstation.webp",
+      "public/covers/showbook-xi.webp",
+      "public/covers/vaayu-workspace.webp"
+    ]
+  },
+  "vastraabharana": {
+    "repoName": "chiragsatish2011-pixel/vastraabharana",
+    "url": "https://github.com/chiragsatish2011-pixel/vastraabharana",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-10-29T05:05:44Z",
+    "tree": [
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 194
+      },
+      {
+        "path": "README.md",
+        "type": "blob",
+        "size": 5072
+      },
+      {
+        "path": "assets",
+        "type": "tree"
+      },
+      {
+        "path": "assets/fonts",
+        "type": "tree"
+      },
+      {
+        "path": "assets/fonts/instrumentsans_i4.028d3c3cd8d085648c808ceb20cd2fd1eb3560e5.woff2",
+        "type": "blob",
+        "size": 32040
+      },
+      {
+        "path": "assets/fonts/instrumentsans_i4.7e90d82df8dee29a99237cd19cc529d2206706a2.woff",
+        "type": "blob",
+        "size": 32028
+      },
+      {
+        "path": "assets/fonts/instrumentsans_i7.ce33afe63f8198a3ac4261b826b560103542cd36.woff",
+        "type": "blob",
+        "size": 32756
+      },
+      {
+        "path": "assets/fonts/instrumentsans_i7.d6063bb5d8f9cbf96eace9e8801697c54f363c6a.woff2",
+        "type": "blob",
+        "size": 32768
+      },
+      {
+        "path": "assets/fonts/instrumentsans_n4.510f1b081e58d08c30978f465518799851ef6d8b.woff",
+        "type": "blob",
+        "size": 30316
+      },
+      {
+        "path": "assets/fonts/instrumentsans_n4.db86542ae5e1596dbdb28c279ae6c2086c4c5bfa.woff2",
+        "type": "blob",
+        "size": 30380
+      },
+      {
+        "path": "assets/fonts/instrumentsans_n7.b9e40f166fb7639074ba34738101a9d2990bb41a.woff",
+        "type": "blob",
+        "size": 31168
+      },
+      {
+        "path": "assets/fonts/instrumentsans_n7.e4ad9032e203f9a0977786c356573ced65a7419a.woff2",
+        "type": "blob",
+        "size": 31096
+      },
+      {
+        "path": "assets/fonts/ovo_n4.45d7366896f09aaf8686b8a5de287b8fbe74e5ee.woff",
+        "type": "blob",
+        "size": 16256
+      },
+      {
+        "path": "assets/fonts/ovo_n4.cbcdfe6a371e62394cce345894111238d5c755fe.woff2",
+        "type": "blob",
+        "size": 16256
+      },
+      {
+        "path": "assets/icons",
+        "type": "tree"
+      },
+      {
+        "path": "assets/icons/icon_1.svg",
+        "type": "blob",
+        "size": 302
+      },
+      {
+        "path": "assets/icons/icon_10.svg",
+        "type": "blob",
+        "size": 236
+      },
+      {
+        "path": "assets/icons/icon_100.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_101.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_102.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_103.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_104.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_105.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_106.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_107.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_108.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_109.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_11.svg",
+        "type": "blob",
+        "size": 321
+      },
+      {
+        "path": "assets/icons/icon_110.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_111.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_112.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_113.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_114.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_115.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_116.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_117.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_118.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_119.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_12.svg",
+        "type": "blob",
+        "size": 476
+      },
+      {
+        "path": "assets/icons/icon_120.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_121.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_122.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_123.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_124.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_125.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_126.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_127.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_128.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_129.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_13.svg",
+        "type": "blob",
+        "size": 236
+      }
+    ],
+    "rawFiles": [
+      ".gitignore",
+      "README.md",
+      "assets/fonts/instrumentsans_i4.028d3c3cd8d085648c808ceb20cd2fd1eb3560e5.woff2",
+      "assets/fonts/instrumentsans_i4.7e90d82df8dee29a99237cd19cc529d2206706a2.woff",
+      "assets/fonts/instrumentsans_i7.ce33afe63f8198a3ac4261b826b560103542cd36.woff",
+      "assets/fonts/instrumentsans_i7.d6063bb5d8f9cbf96eace9e8801697c54f363c6a.woff2",
+      "assets/fonts/instrumentsans_n4.510f1b081e58d08c30978f465518799851ef6d8b.woff",
+      "assets/fonts/instrumentsans_n4.db86542ae5e1596dbdb28c279ae6c2086c4c5bfa.woff2",
+      "assets/fonts/instrumentsans_n7.b9e40f166fb7639074ba34738101a9d2990bb41a.woff",
+      "assets/fonts/instrumentsans_n7.e4ad9032e203f9a0977786c356573ced65a7419a.woff2",
+      "assets/fonts/ovo_n4.45d7366896f09aaf8686b8a5de287b8fbe74e5ee.woff",
+      "assets/fonts/ovo_n4.cbcdfe6a371e62394cce345894111238d5c755fe.woff2",
+      "assets/icons/icon_1.svg",
+      "assets/icons/icon_10.svg",
+      "assets/icons/icon_100.svg"
+    ]
+  },
+  "nomin-webshow": {
+    "repoName": "chiragsatish2011-pixel/Nomin-showcase",
+    "url": "https://github.com/chiragsatish2011-pixel/Nomin-showcase",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-10-09T16:00:57Z",
+    "tree": [
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 161
+      },
+      {
+        "path": "DESIGN.md",
+        "type": "blob",
+        "size": 31387
+      },
+      {
+        "path": "README.md",
+        "type": "blob",
+        "size": 4257
+      },
+      {
+        "path": "assets",
+        "type": "tree"
+      },
+      {
+        "path": "assets/logo-mark-256.png",
+        "type": "blob",
+        "size": 32923
+      },
+      {
+        "path": "assets/logo-mark.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "globe.js",
+        "type": "blob",
+        "size": 21763
+      },
+      {
+        "path": "google8471479049d77fa1.html",
+        "type": "blob",
+        "size": 53
+      },
+      {
+        "path": "index.html",
+        "type": "blob",
+        "size": 47900
+      },
+      {
+        "path": "motion.js",
+        "type": "blob",
+        "size": 17256
+      },
+      {
+        "path": "robots.txt",
+        "type": "blob",
+        "size": 147
+      },
+      {
+        "path": "sitemap.xml",
+        "type": "blob",
+        "size": 210
+      },
+      {
+        "path": "styles.css",
+        "type": "blob",
+        "size": 83835
+      },
+      {
+        "path": "vercel.json",
+        "type": "blob",
+        "size": 854
+      }
+    ],
+    "rawFiles": [
+      ".gitignore",
+      "DESIGN.md",
+      "README.md",
+      "assets/logo-mark-256.png",
+      "assets/logo-mark.png",
+      "globe.js",
+      "google8471479049d77fa1.html",
+      "index.html",
+      "motion.js",
+      "robots.txt",
+      "sitemap.xml",
+      "styles.css",
+      "vercel.json"
+    ]
+  },
+  "nomin-code": {
+    "repoName": "chiragsatish2011-pixel/nomin-code",
+    "url": "https://github.com/chiragsatish2011-pixel/nomin-code",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-09-27T10:15:38Z",
+    "tree": [
+      {
+        "path": ".claude",
+        "type": "tree"
+      },
+      {
+        "path": ".claude/launch.json",
+        "type": "blob",
+        "size": 182
+      },
+      {
+        "path": ".env.example",
+        "type": "blob",
+        "size": 1682
+      },
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 75
+      },
+      {
+        "path": "DESIGN-claude.md",
+        "type": "blob",
+        "size": 33586
+      },
+      {
+        "path": "DESIGN-kraken.md",
+        "type": "blob",
+        "size": 4350
+      },
+      {
+        "path": "README.md",
+        "type": "blob",
+        "size": 17299
+      },
+      {
+        "path": "api",
+        "type": "tree"
+      },
+      {
+        "path": "api/chat.ts",
+        "type": "blob",
+        "size": 453
+      },
+      {
+        "path": "api/evidence.ts",
+        "type": "blob",
+        "size": 465
+      },
+      {
+        "path": "api/files.ts",
+        "type": "blob",
+        "size": 429
+      },
+      {
+        "path": "api/health.ts",
+        "type": "blob",
+        "size": 498
+      },
+      {
+        "path": "api/review.ts",
+        "type": "blob",
+        "size": 459
+      },
+      {
+        "path": "api/vision.ts",
+        "type": "blob",
+        "size": 459
+      },
+      {
+        "path": "index.html",
+        "type": "blob",
+        "size": 1709
+      },
+      {
+        "path": "package-lock.json",
+        "type": "blob",
+        "size": 63014
+      },
+      {
+        "path": "package.json",
+        "type": "blob",
+        "size": 1106
+      },
+      {
+        "path": "public",
+        "type": "tree"
+      },
+      {
+        "path": "public/favicon.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/icon-192.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/icon-512.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/icon-maskable-512.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/logo-mark-black.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/logo-mark.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/logo.png",
+        "type": "blob",
+        "size": 520287
+      },
+      {
+        "path": "public/manifest.webmanifest",
+        "type": "blob",
+        "size": 680
+      },
+      {
+        "path": "public/sw.js",
+        "type": "blob",
+        "size": 2201
+      },
+      {
+        "path": "src",
+        "type": "tree"
+      },
+      {
+        "path": "src/App.tsx",
+        "type": "blob",
+        "size": 43772
+      },
+      {
+        "path": "src/cli",
+        "type": "tree"
+      },
+      {
+        "path": "src/cli/bin.ts",
+        "type": "blob",
+        "size": 1184
+      },
+      {
+        "path": "src/cli/main.ts",
+        "type": "blob",
+        "size": 11127
+      },
+      {
+        "path": "src/cli/tree.ts",
+        "type": "blob",
+        "size": 4324
+      },
+      {
+        "path": "src/components",
+        "type": "tree"
+      },
+      {
+        "path": "src/components/Canvas.tsx",
+        "type": "blob",
+        "size": 14732
+      },
+      {
+        "path": "src/components/CommandPalette.tsx",
+        "type": "blob",
+        "size": 5207
+      },
+      {
+        "path": "src/components/Composer.tsx",
+        "type": "blob",
+        "size": 13705
+      },
+      {
+        "path": "src/components/Mark.tsx",
+        "type": "blob",
+        "size": 1644
+      },
+      {
+        "path": "src/components/Markdown.tsx",
+        "type": "blob",
+        "size": 6574
+      },
+      {
+        "path": "src/components/Orb3D.tsx",
+        "type": "blob",
+        "size": 8482
+      },
+      {
+        "path": "src/components/ParticleOrb.tsx",
+        "type": "blob",
+        "size": 4306
+      },
+      {
+        "path": "src/components/Pipeline.tsx",
+        "type": "blob",
+        "size": 3801
+      },
+      {
+        "path": "src/components/PlanCard.tsx",
+        "type": "blob",
+        "size": 3431
+      },
+      {
+        "path": "src/components/QuestionCard.tsx",
+        "type": "blob",
+        "size": 4308
+      },
+      {
+        "path": "src/components/ReportCard.tsx",
+        "type": "blob",
+        "size": 6796
+      },
+      {
+        "path": "src/components/Templates.tsx",
+        "type": "blob",
+        "size": 6151
+      },
+      {
+        "path": "src/components/ThinkingBlock.tsx",
+        "type": "blob",
+        "size": 3401
+      },
+      {
+        "path": "src/components/ThinkingSteps.tsx",
+        "type": "blob",
+        "size": 8595
+      },
+      {
+        "path": "src/lib",
+        "type": "tree"
+      },
+      {
+        "path": "src/lib/artifacts.ts",
+        "type": "blob",
+        "size": 7940
+      }
+    ],
+    "rawFiles": [
+      ".claude/launch.json",
+      ".env.example",
+      ".gitignore",
+      "DESIGN-claude.md",
+      "DESIGN-kraken.md",
+      "README.md",
+      "api/chat.ts",
+      "api/evidence.ts",
+      "api/files.ts",
+      "api/health.ts",
+      "api/review.ts",
+      "api/vision.ts",
+      "index.html",
+      "package-lock.json",
+      "package.json"
+    ]
+  },
+  "nomin-code-trion": {
+    "repoName": "chiragsatish2011-pixel/Trion-Website-with-assets",
+    "url": "https://github.com/chiragsatish2011-pixel/Trion-Website-with-assets",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-09-20T10:56:53Z",
+    "tree": [],
+    "rawFiles": []
+  },
+  "showbook": {
+    "repoName": "chiragsatish2011-pixel/Showbook",
+    "url": "https://github.com/chiragsatish2011-pixel/Showbook",
+    "description": null,
+    "defaultBranch": "master",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-08-31T15:36:50Z",
+    "tree": [
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 253
+      },
+      {
+        "path": ".oxlintrc.json",
+        "type": "blob",
+        "size": 231
+      },
+      {
+        "path": "README.md",
+        "type": "blob",
+        "size": 1009
+      },
+      {
+        "path": "Webistes pictures",
+        "type": "tree"
+      },
+      {
+        "path": "Webistes pictures/Contrictors Company Website Design Demo.png",
+        "type": "blob",
+        "size": 2131865
+      },
+      {
+        "path": "Webistes pictures/Ice Cream Website Demo.png",
+        "type": "blob",
+        "size": 1261636
+      },
+      {
+        "path": "Webistes pictures/Lumora Cat Website Design.png",
+        "type": "blob",
+        "size": 1917759
+      },
+      {
+        "path": "Webistes pictures/Velmora Juices Website Design Demo.png",
+        "type": "blob",
+        "size": 482178
+      },
+      {
+        "path": "Webistes pictures/Zebronix Website Design.png",
+        "type": "blob",
+        "size": 1128501
+      },
+      {
+        "path": "index.html",
+        "type": "blob",
+        "size": 1399
+      },
+      {
+        "path": "package-lock.json",
+        "type": "blob",
+        "size": 65894
+      },
+      {
+        "path": "package.json",
+        "type": "blob",
+        "size": 607
+      },
+      {
+        "path": "public",
+        "type": "tree"
+      },
+      {
+        "path": "public/demo-contrictors.webp",
+        "type": "blob",
+        "size": 86916
+      },
+      {
+        "path": "public/demo-icecream.webp",
+        "type": "blob",
+        "size": 85940
+      },
+      {
+        "path": "public/demo-lumora.webp",
+        "type": "blob",
+        "size": 50900
+      },
+      {
+        "path": "public/demo-velmora.webp",
+        "type": "blob",
+        "size": 48322
+      },
+      {
+        "path": "public/demo-zebronix.webp",
+        "type": "blob",
+        "size": 64878
+      },
+      {
+        "path": "public/favicon.svg",
+        "type": "blob",
+        "size": 9522
+      },
+      {
+        "path": "public/hero-book.mp4",
+        "type": "blob",
+        "size": 2886405
+      },
+      {
+        "path": "src",
+        "type": "tree"
+      },
+      {
+        "path": "src/App.jsx",
+        "type": "blob",
+        "size": 1539
+      },
+      {
+        "path": "src/components",
+        "type": "tree"
+      },
+      {
+        "path": "src/components/ContactCard.jsx",
+        "type": "blob",
+        "size": 7169
+      },
+      {
+        "path": "src/components/Footer.jsx",
+        "type": "blob",
+        "size": 839
+      },
+      {
+        "path": "src/components/Hero.jsx",
+        "type": "blob",
+        "size": 11981
+      },
+      {
+        "path": "src/components/LightLeaks.jsx",
+        "type": "blob",
+        "size": 1595
+      },
+      {
+        "path": "src/components/ProjectDeck",
+        "type": "tree"
+      },
+      {
+        "path": "src/components/ProjectDeck/ProjectCard.jsx",
+        "type": "blob",
+        "size": 3105
+      },
+      {
+        "path": "src/components/ProjectDeck/ProjectDeck.jsx",
+        "type": "blob",
+        "size": 9609
+      },
+      {
+        "path": "src/components/ProjectDeck/ProjectPreview.jsx",
+        "type": "blob",
+        "size": 5143
+      },
+      {
+        "path": "src/components/ProjectDeck/data.js",
+        "type": "blob",
+        "size": 3174
+      },
+      {
+        "path": "src/index.css",
+        "type": "blob",
+        "size": 1198
+      },
+      {
+        "path": "src/main.jsx",
+        "type": "blob",
+        "size": 229
+      },
+      {
+        "path": "vite.config.js",
+        "type": "blob",
+        "size": 292
+      }
+    ],
+    "rawFiles": [
+      ".gitignore",
+      ".oxlintrc.json",
+      "README.md",
+      "Webistes pictures/Contrictors Company Website Design Demo.png",
+      "Webistes pictures/Ice Cream Website Demo.png",
+      "Webistes pictures/Lumora Cat Website Design.png",
+      "Webistes pictures/Velmora Juices Website Design Demo.png",
+      "Webistes pictures/Zebronix Website Design.png",
+      "index.html",
+      "package-lock.json",
+      "package.json",
+      "public/demo-contrictors.webp",
+      "public/demo-icecream.webp",
+      "public/demo-lumora.webp",
+      "public/demo-velmora.webp"
+    ]
+  },
+  "garts-workspace": {
+    "repoName": "chiragsatish2011-pixel/G-Arts-Workspace",
+    "url": "https://github.com/chiragsatish2011-pixel/G-Arts-Workspace",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-08-12T01:11:14Z",
+    "tree": [
+      {
+        "path": ".env.example",
+        "type": "blob",
+        "size": 899
+      },
+      {
+        "path": ".env.production.example",
+        "type": "blob",
+        "size": 1161
+      },
+      {
+        "path": ".gitignore",
+        "type": "blob",
+        "size": 278
+      },
+      {
+        "path": "AI.md",
+        "type": "blob",
+        "size": 1737
+      },
+      {
+        "path": "ARCHITECTURE.md",
+        "type": "blob",
+        "size": 1767
+      },
+      {
+        "path": "AUTH.md",
+        "type": "blob",
+        "size": 1313
+      },
+      {
+        "path": "BACKUP.md",
+        "type": "blob",
+        "size": 999
+      },
+      {
+        "path": "CHAT.md",
+        "type": "blob",
+        "size": 2515
+      },
+      {
+        "path": "DATABASE.md",
+        "type": "blob",
+        "size": 1210
+      },
+      {
+        "path": "DEPLOY.md",
+        "type": "blob",
+        "size": 4511
+      },
+      {
+        "path": "DO_NOT_BUILD.md",
+        "type": "blob",
+        "size": 1711
+      },
+      {
+        "path": "PERMISSIONS.md",
+        "type": "blob",
+        "size": 1411
+      },
+      {
+        "path": "PLAN.md",
+        "type": "blob",
+        "size": 20197
+      },
+      {
+        "path": "PRODUCT.md",
+        "type": "blob",
+        "size": 2464
+      },
+      {
+        "path": "PRODUCTION.md",
+        "type": "blob",
+        "size": 1750
+      },
+      {
+        "path": "README.md",
+        "type": "blob",
+        "size": 1686
+      },
+      {
+        "path": "ROADMAP.md",
+        "type": "blob",
+        "size": 4751
+      },
+      {
+        "path": "SECURITY.md",
+        "type": "blob",
+        "size": 929
+      },
+      {
+        "path": "TODO.md",
+        "type": "blob",
+        "size": 4745
+      },
+      {
+        "path": "api",
+        "type": "tree"
+      },
+      {
+        "path": "api/index.ts",
+        "type": "blob",
+        "size": 1506
+      },
+      {
+        "path": "apps",
+        "type": "tree"
+      },
+      {
+        "path": "apps/api",
+        "type": "tree"
+      },
+      {
+        "path": "apps/api/.env.example",
+        "type": "blob",
+        "size": 764
+      },
+      {
+        "path": "apps/api/.env.production.example",
+        "type": "blob",
+        "size": 545
+      },
+      {
+        "path": "apps/api/package.json",
+        "type": "blob",
+        "size": 1041
+      },
+      {
+        "path": "apps/api/prisma",
+        "type": "tree"
+      },
+      {
+        "path": "apps/api/prisma/migrations",
+        "type": "tree"
+      },
+      {
+        "path": "apps/api/prisma/migrations/20260812000000_initial_production_schema",
+        "type": "tree"
+      },
+      {
+        "path": "apps/api/prisma/migrations/20260812000000_initial_production_schema/migration.sql",
+        "type": "blob",
+        "size": 7484
+      },
+      {
+        "path": "apps/api/prisma/schema.prisma",
+        "type": "blob",
+        "size": 9328
+      },
+      {
+        "path": "apps/api/prisma/seed.ts",
+        "type": "blob",
+        "size": 686
+      },
+      {
+        "path": "apps/api/src",
+        "type": "tree"
+      },
+      {
+        "path": "apps/api/src/app.ts",
+        "type": "blob",
+        "size": 3937
+      },
+      {
+        "path": "apps/api/src/auth.ts",
+        "type": "blob",
+        "size": 2567
+      },
+      {
+        "path": "apps/api/src/config.ts",
+        "type": "blob",
+        "size": 4802
+      },
+      {
+        "path": "apps/api/src/lib",
+        "type": "tree"
+      },
+      {
+        "path": "apps/api/src/lib/prisma.ts",
+        "type": "blob",
+        "size": 1958
+      },
+      {
+        "path": "apps/api/src/permissions.test.ts",
+        "type": "blob",
+        "size": 617
+      },
+      {
+        "path": "apps/api/src/permissions.ts",
+        "type": "blob",
+        "size": 458
+      },
+      {
+        "path": "apps/api/src/routes",
+        "type": "tree"
+      },
+      {
+        "path": "apps/api/src/routes/admin.ts",
+        "type": "blob",
+        "size": 2138
+      },
+      {
+        "path": "apps/api/src/routes/auth.ts",
+        "type": "blob",
+        "size": 4905
+      },
+      {
+        "path": "apps/api/src/routes/avatars.ts",
+        "type": "blob",
+        "size": 6000
+      },
+      {
+        "path": "apps/api/src/routes/events.ts",
+        "type": "blob",
+        "size": 21205
+      },
+      {
+        "path": "apps/api/src/routes/g-news-todos.ts",
+        "type": "blob",
+        "size": 2340
+      },
+      {
+        "path": "apps/api/src/routes/library.ts",
+        "type": "blob",
+        "size": 1350
+      },
+      {
+        "path": "apps/api/src/routes/logbook.ts",
+        "type": "blob",
+        "size": 2453
+      },
+      {
+        "path": "apps/api/src/routes/translation-weeks.ts",
+        "type": "blob",
+        "size": 4938
+      },
+      {
+        "path": "apps/api/src/routes/users.ts",
+        "type": "blob",
+        "size": 18820
+      }
+    ],
+    "rawFiles": [
+      ".env.example",
+      ".env.production.example",
+      ".gitignore",
+      "AI.md",
+      "ARCHITECTURE.md",
+      "AUTH.md",
+      "BACKUP.md",
+      "CHAT.md",
+      "DATABASE.md",
+      "DEPLOY.md",
+      "DO_NOT_BUILD.md",
+      "PERMISSIONS.md",
+      "PLAN.md",
+      "PRODUCT.md",
+      "PRODUCTION.md"
+    ]
+  },
+  "trion-assets": {
+    "repoName": "chiragsatish2011-pixel/Trion-Website-with-assets",
+    "url": "https://github.com/chiragsatish2011-pixel/Trion-Website-with-assets",
+    "description": null,
+    "defaultBranch": "main",
+    "stars": 0,
+    "forks": 0,
+    "updatedAt": "2026-09-20T10:56:53Z",
+    "tree": [],
+    "rawFiles": []
+  }
+}

@@ -1,0 +1,101 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Project {
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  title         String
+  tagline       String
+  description   String?
+  liveUrl       String
+  repoUrl       String
+  hostingNotes  String?
+  status        String         @default("Live") // Live, WIP, Archived
+  visibility    String         @default("public") // public, unlisted, draft
+  featured      Boolean        @default(false)
+  tags          String         @default("[]") // JSON string array
+  accentColor   String         @default("#00F0FF")
+  lastSyncedSha String?
+  orderIndex    Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  assets        Asset[]
+  docs          Doc[]
+  repoSnapshot  RepoSnapshot?
+  specCard      SpecCard?
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type      String   // screenshot, video, cover, og_image
+  path      String   // URL or local file path
+  viewport  String?  // desktop, tablet, mobile
+  createdAt DateTime @default(now())
+}
+
+model Doc {
+  id               String   @id @default(cuid())
+  projectId        String
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  section          String   // overview, architecture, data_flow, walkthrough, rationale, setup, trade_offs, reverse_narrative
+  markdown         String
+  generatedAt      DateTime @default(now())
+  sourceSha        String?
+  isManualOverride Boolean  @default(false)
+
+  @@unique([projectId, section])
+}
+
+model RepoSnapshot {
+  id         String   @id @default(cuid())
+  projectId  String   @unique
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tree       String   // JSON string of file tree
+  languages  String   // JSON string of languages breakdown
+  commits    String   // JSON string of recent commit history
+  releases   String   // JSON string of releases
+  manifests  String   // JSON string of package manifests (package.json, Cargo.toml, etc.)
+  fetchedAt  DateTime @default(now())
+}
+
+model SpecCard {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fields    String   // JSON string with structured NVIDIA/HuggingFace-style model card fields
+  updatedAt DateTime @updatedAt
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  ip        String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+}
+
+model RateLimitAttempt {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g., ip or action
+  attempts  Int      @default(1)
+  blockedUntil DateTime?
+  lastAttempt DateTime @default(now())
+}
