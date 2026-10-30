@@ -1,5 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "prisma generate && next build"
+  "buildCommand": "prisma generate && next build",
+  "env": {
+    "DATABASE_URL": "file:./vault.db"
+  },
+  "build": {
+    "env": {
+      "DATABASE_URL": "file:./vault.db"
+    }
+  }
 }

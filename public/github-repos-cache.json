@@ -1497,11 +1497,14 @@
   "vastraabharana": {
     "repoName": "chiragsatish2011-pixel/vastraabharana",
     "url": "https://github.com/chiragsatish2011-pixel/vastraabharana",
-    "description": null,
+    "liveUrl": "https://vastraabharana-design.vercel.app/",
+    "title": "vastraabharana",
+    "description": "Production repository verified and linked.",
     "defaultBranch": "main",
     "stars": 0,
     "forks": 0,
-    "updatedAt": "2026-10-29T05:05:44Z",
+    "updatedAt": "2026-10-30T11:37:52.016Z",
+    "bannerUrl": "/captures/vastraabharana.webp",
     "tree": [
       {
         "path": ".gitignore",
@@ -1749,24 +1752,257 @@
         "path": "assets/icons/icon_13.svg",
         "type": "blob",
         "size": 236
+      },
+      {
+        "path": "assets/icons/icon_130.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_131.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_132.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_133.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_134.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_135.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_136.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_137.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_138.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_139.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_14.svg",
+        "type": "blob",
+        "size": 246
+      },
+      {
+        "path": "assets/icons/icon_140.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_141.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_142.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_143.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_144.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_145.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_146.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_147.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_148.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_149.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_15.svg",
+        "type": "blob",
+        "size": 265
+      },
+      {
+        "path": "assets/icons/icon_150.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_151.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_152.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_153.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_154.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_155.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_156.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_157.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_158.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_159.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_16.svg",
+        "type": "blob",
+        "size": 333
+      },
+      {
+        "path": "assets/icons/icon_160.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_161.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_162.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_163.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_164.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_165.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_166.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_167.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_168.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_169.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_17.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_170.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_171.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_172.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_173.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_174.svg",
+        "type": "blob",
+        "size": 316
+      },
+      {
+        "path": "assets/icons/icon_175.svg",
+        "type": "blob",
+        "size": 316
       }
-    ],
-    "rawFiles": [
-      ".gitignore",
-      "README.md",
-      "assets/fonts/instrumentsans_i4.028d3c3cd8d085648c808ceb20cd2fd1eb3560e5.woff2",
-      "assets/fonts/instrumentsans_i4.7e90d82df8dee29a99237cd19cc529d2206706a2.woff",
-      "assets/fonts/instrumentsans_i7.ce33afe63f8198a3ac4261b826b560103542cd36.woff",
-      "assets/fonts/instrumentsans_i7.d6063bb5d8f9cbf96eace9e8801697c54f363c6a.woff2",
-      "assets/fonts/instrumentsans_n4.510f1b081e58d08c30978f465518799851ef6d8b.woff",
-      "assets/fonts/instrumentsans_n4.db86542ae5e1596dbdb28c279ae6c2086c4c5bfa.woff2",
-      "assets/fonts/instrumentsans_n7.b9e40f166fb7639074ba34738101a9d2990bb41a.woff",
-      "assets/fonts/instrumentsans_n7.e4ad9032e203f9a0977786c356573ced65a7419a.woff2",
-      "assets/fonts/ovo_n4.45d7366896f09aaf8686b8a5de287b8fbe74e5ee.woff",
-      "assets/fonts/ovo_n4.cbcdfe6a371e62394cce345894111238d5c755fe.woff2",
-      "assets/icons/icon_1.svg",
-      "assets/icons/icon_10.svg",
-      "assets/icons/icon_100.svg"
     ]
   },
   "nomin-webshow": {
@@ -2149,11 +2385,14 @@
   "showbook": {
     "repoName": "chiragsatish2011-pixel/Showbook",
     "url": "https://github.com/chiragsatish2011-pixel/Showbook",
-    "description": null,
+    "liveUrl": "https://showbook-xi.vercel.app/",
+    "title": "Showbook",
+    "description": "Production repository verified and linked.",
     "defaultBranch": "master",
     "stars": 0,
     "forks": 0,
-    "updatedAt": "2026-08-31T15:36:50Z",
+    "updatedAt": "2026-10-30T11:30:31.849Z",
+    "bannerUrl": "/captures/showbook.webp",
     "tree": [
       {
         "path": ".gitignore",
@@ -2325,23 +2564,6 @@
         "type": "blob",
         "size": 292
       }
-    ],
-    "rawFiles": [
-      ".gitignore",
-      ".oxlintrc.json",
-      "README.md",
-      "Webistes pictures/Contrictors Company Website Design Demo.png",
-      "Webistes pictures/Ice Cream Website Demo.png",
-      "Webistes pictures/Lumora Cat Website Design.png",
-      "Webistes pictures/Velmora Juices Website Design Demo.png",
-      "Webistes pictures/Zebronix Website Design.png",
-      "index.html",
-      "package-lock.json",
-      "package.json",
-      "public/demo-contrictors.webp",
-      "public/demo-icecream.webp",
-      "public/demo-lumora.webp",
-      "public/demo-velmora.webp"
     ]
   },
   "garts-workspace": {
