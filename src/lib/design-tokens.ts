@@ -71,11 +71,6 @@ export function formatProjectMicrocopy(project: {
   repoUrl: string;
   orderIndex?: number;
 }) {
-  const index = (project.orderIndex ?? 0) + 1;
-  const fragmentNumber = 15 + Math.floor((index - 1) / 4);
-  const fragmentLetter = String.fromCharCode(65 + ((index - 1) % 4));
-  const fragmentCode = `${fragmentNumber}${fragmentLetter}`;
-
   const dateObj = new Date(project.createdAt);
   const formattedDate = dateObj.toLocaleDateString("en-US", {
     month: "short",
@@ -83,20 +78,21 @@ export function formatProjectMicrocopy(project: {
     year: "numeric",
   });
 
-  const shortSha = project.lastSyncedSha?.slice(0, 7) || "2d0446a";
-  const primaryDomain = new URL(project.liveUrl).hostname;
+  const shortSha = project.lastSyncedSha?.slice(0, 7) || "HEAD";
+  let primaryDomain = "";
+  try {
+    primaryDomain = new URL(project.liveUrl).hostname;
+  } catch {
+    primaryDomain = project.liveUrl;
+  }
 
   return {
-    fragmentCode: project.title,
     codeBadge: project.title,
-    fileNumber: project.title,
-    receiptId: shortSha.toUpperCase(),
     date: formattedDate,
     sha: shortSha,
     domain: primaryDomain,
-    statusText: project.status === "Live" ? "PRODUCTION" : project.status.toUpperCase(),
-    auditText: "SOURCE VERIFIED",
-    primaryTag: project.tags[0] || "Architecture",
-    secondaryTag: project.tags[1] || "TypeScript",
+    statusText: project.status,
+    primaryTag: project.tags[0] || "Showcase",
+    secondaryTag: project.tags[1] || "Production",
   };
 }

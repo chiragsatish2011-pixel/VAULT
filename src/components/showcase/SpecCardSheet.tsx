@@ -125,16 +125,14 @@ ${spec.citation}
         {/* Spec Header */}
         <div className="border-b border-vault-border pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 print:border-gray-300">
           <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-vault-accent uppercase">
-              <span>VAULT SPECIFICATION CARD</span>
-              <span>•</span>
-              <span>{spec.category}</span>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-white text-black text-xs font-bold">{spec.category}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-display font-black text-white mt-1 print:text-black">
+            <h1 className="text-2xl sm:text-4xl font-display font-black text-white mt-2 print:text-black">
               {spec.projectName}
             </h1>
             <p className="text-xs text-vault-muted mt-1 font-mono">
-              Version: {spec.version} | License: {spec.license} | Verified: {new Date(spec.lastVerified).toLocaleDateString()}
+              Version: {spec.version} | License: {spec.license}
             </p>
           </div>
 
@@ -148,19 +146,19 @@ ${spec.citation}
         {/* Section 1: Overview & Scope */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="p-4 rounded-xl bg-vault-surface/60 border border-vault-border space-y-2 print:border-gray-200">
-            <h4 className="text-xs font-mono uppercase text-vault-accent font-bold">Intended Use</h4>
+            <h4 className="text-sm text-white font-bold">Intended Use</h4>
             <p className="text-xs text-vault-text/90 leading-relaxed font-sans">{spec.intendedUse}</p>
           </div>
           <div className="p-4 rounded-xl bg-vault-surface/60 border border-vault-border space-y-2 print:border-gray-200">
-            <h4 className="text-xs font-mono uppercase text-vault-violet font-bold">Target Users</h4>
+            <h4 className="text-sm text-white font-bold">Target Users</h4>
             <p className="text-xs text-vault-text/90 leading-relaxed font-sans">{spec.targetUsers}</p>
           </div>
         </div>
 
         {/* Section 2: Architecture & Stacks */}
         <div className="space-y-4">
-          <h3 className="text-xs font-mono uppercase text-vault-subtle tracking-widest font-bold">
-            02. ARCHITECTURE & DEPENDENCIES
+          <h3 className="text-base text-white font-bold tracking-tight">
+            Architecture & Dependencies
           </h3>
           <div className="p-4 rounded-xl bg-vault-surface/60 border border-vault-border space-y-3 print:border-gray-200">
             <p className="text-xs text-vault-text/90 leading-relaxed font-sans">
@@ -242,24 +240,24 @@ ${spec.citation}
 
         {/* Section 4: Hosting & Storage */}
         <div className="space-y-4">
-          <h3 className="text-xs font-mono uppercase text-vault-subtle tracking-widest font-bold">
-            04. INFRASTRUCTURE & TOPOLOGY
+          <h3 className="text-base text-white font-bold tracking-tight">
+            Infrastructure & Topology
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
             <div className="p-3 rounded-lg bg-vault-surface/60 border border-vault-border">
-              <span className="text-vault-subtle block text-[10px]">HOSTING</span>
+              <span className="text-neutral-400 block text-xs font-bold">Hosting</span>
               <span className="text-white font-semibold mt-1 block truncate">{spec.hosting.platform}</span>
             </div>
             <div className="p-3 rounded-lg bg-vault-surface/60 border border-vault-border">
-              <span className="text-vault-subtle block text-[10px]">STORAGE</span>
+              <span className="text-neutral-400 block text-xs font-bold">Storage</span>
               <span className="text-white font-semibold mt-1 block truncate">{spec.hosting.storage}</span>
             </div>
             <div className="p-3 rounded-lg bg-vault-surface/60 border border-vault-border">
-              <span className="text-vault-subtle block text-[10px]">DATABASE</span>
+              <span className="text-neutral-400 block text-xs font-bold">Database</span>
               <span className="text-white font-semibold mt-1 block truncate">{spec.hosting.database}</span>
             </div>
             <div className="p-3 rounded-lg bg-vault-surface/60 border border-vault-border">
-              <span className="text-vault-subtle block text-[10px]">CDN / PROXY</span>
+              <span className="text-neutral-400 block text-xs font-bold">CDN / Proxy</span>
               <span className="text-white font-semibold mt-1 block truncate">{spec.hosting.cdn || "Global Anycast"}</span>
             </div>
           </div>
@@ -267,8 +265,8 @@ ${spec.citation}
 
         {/* Section 5: Limitations & Ethical Notes */}
         <div className="space-y-4">
-          <h3 className="text-xs font-mono uppercase text-vault-subtle tracking-widest font-bold">
-            05. KNOWN LIMITATIONS & ETHICAL NOTES
+          <h3 className="text-base text-white font-bold tracking-tight">
+            Known Limitations & System Notes
           </h3>
           <div className="p-4 rounded-xl bg-vault-amber/10 border border-vault-amber/30 space-y-2 text-xs font-mono text-vault-amber">
             <ul className="list-disc list-inside space-y-1">

@@ -327,7 +327,7 @@ export function OpenFileDetail({
             {/* Bookmark: Overview */}
             <button
               onClick={() => setActivePageIndex(0)}
-              className={`px-3.5 py-4 rounded-r-xl text-[11px] font-mono font-black tracking-widest uppercase writing-mode-vertical shadow-xl border-r border-t border-b transition-all cursor-pointer ${
+              className={`px-3.5 py-4 rounded-r-xl text-xs font-sans font-bold tracking-tight writing-mode-vertical shadow-xl border-r border-t border-b transition-all cursor-pointer ${
                 activePageIndex === 0
                   ? "bg-black text-white border-white scale-105 shadow-2xl"
                   : "bg-[#1E40AF] text-white/90 hover:text-white border-blue-400 hover:scale-102"
@@ -339,37 +339,37 @@ export function OpenFileDetail({
             {/* Bookmark: Files Breakdown */}
             <button
               onClick={() => setActivePageIndex(1)}
-              className={`px-3.5 py-4 rounded-r-xl text-[11px] font-mono font-black tracking-widest uppercase writing-mode-vertical shadow-xl border-r border-t border-b transition-all cursor-pointer ${
+              className={`px-3.5 py-4 rounded-r-xl text-xs font-sans font-bold tracking-tight writing-mode-vertical shadow-xl border-r border-t border-b transition-all cursor-pointer ${
                 activePageIndex === 1
                   ? "bg-black text-white border-white scale-105 shadow-2xl"
                   : "bg-[#DC2626] text-white/90 hover:text-white border-red-400 hover:scale-102"
               }`}
             >
-              Files Explaned
+              Files Breakdown
             </button>
 
             {/* Bookmark: Source Code */}
             <button
               onClick={() => setActivePageIndex(2)}
-              className={`px-3.5 py-4 rounded-r-xl text-[11px] font-mono font-black tracking-widest uppercase writing-mode-vertical shadow-xl border-r border-t border-b transition-all cursor-pointer ${
+              className={`px-3.5 py-4 rounded-r-xl text-xs font-sans font-bold tracking-tight writing-mode-vertical shadow-xl border-r border-t border-b transition-all cursor-pointer ${
                 activePageIndex === 2
                   ? "bg-black text-white border-white scale-105 shadow-2xl"
                   : "bg-[#059669] text-white/90 hover:text-white border-emerald-400 hover:scale-102"
               }`}
             >
-              Raw Code
+              Source Code
             </button>
 
             {/* Bookmark: Commits & Spec */}
             <button
               onClick={() => setActivePageIndex(3)}
-              className={`px-3.5 py-4 rounded-r-xl text-[11px] font-mono font-black tracking-widest uppercase writing-mode-vertical shadow-xl border-r border-t border-b transition-all cursor-pointer ${
+              className={`px-3.5 py-4 rounded-r-xl text-xs font-sans font-bold tracking-tight writing-mode-vertical shadow-xl border-r border-t border-b transition-all cursor-pointer ${
                 activePageIndex === 3
                   ? "bg-black text-white border-white scale-105 shadow-2xl"
                   : "bg-[#581C87] text-white/90 hover:text-white border-purple-400 hover:scale-102"
               }`}
             >
-              Spec // Live
+              Specification
             </button>
           </div>
 
@@ -390,14 +390,15 @@ export function OpenFileDetail({
             </div>
 
             {/* Document Header Bar */}
-            <div className="pl-6 sm:pl-10 flex items-center justify-between pb-3 border-b-2 border-neutral-300 text-xs font-mono uppercase text-neutral-600 font-bold">
+            <div className="pl-6 sm:pl-10 flex items-center justify-between pb-3 border-b-2 border-neutral-300">
               <div className="flex items-center gap-2">
                 <GitBranch className="w-4 h-4 text-black" />
-                <span className="text-black font-black">main // {repoName}</span>
+                <span className="text-black font-black text-sm tracking-tight">{repoName}</span>
+                <span className="px-2 py-0.5 rounded bg-neutral-200 text-neutral-800 text-[11px] font-bold">main</span>
               </div>
 
-              <div className="text-black font-black tracking-wider text-xs">
-                PAGE 0{activePageIndex + 1} / 04
+              <div className="text-neutral-800 font-bold text-xs">
+                Page {activePageIndex + 1} of 4
               </div>
             </div>
 
@@ -639,34 +640,6 @@ export function OpenFileDetail({
           </p>
         </div>
 
-        {/* Yellow Torn Receipt Sticky Note (DRAGGABLE ANYWHERE) */}
-        <div
-          onPointerDown={(e) => startDrag("receipt", e)}
-          onPointerMove={onDrag}
-          onPointerUp={stopDrag}
-          onPointerCancel={stopDrag}
-          className={`pointer-events-auto bg-[#FEF08A] text-[#713F12] p-4 rounded shadow-2xl border-2 border-[#FACC15] max-w-xs absolute cursor-grab active:cursor-grabbing select-none transition-shadow ${
-            isDragging && dragState.current.card === "receipt" ? "shadow-2xl scale-104 ring-2 ring-[#713F12]/40" : ""
-          }`}
-          style={{
-            zIndex: receiptZ,
-            left: "340px",
-            top: "0px",
-            transform: `translate3d(${receiptPos.x}px, ${receiptPos.y}px, 0) rotate(2deg)`,
-            touchAction: "none",
-          }}
-        >
-          <div className="absolute -top-3.5 left-6 text-neutral-800 pointer-events-none">
-            <Paperclip className="w-6 h-6 transform -rotate-45" />
-          </div>
-          <div className="text-xs font-mono font-black uppercase tracking-widest border-b-2 border-[#EAB308] pb-1 flex justify-between">
-            <span>RECEIPT</span>
-            <span>PRODUCTION</span>
-          </div>
-          <div className="text-xs font-mono mt-2 font-bold">
-            <div>{tabLabel}</div>
-          </div>
-        </div>
 
         {/* 16:9 Live Preview Card (DRAGGABLE ANYWHERE & CLICKABLE) */}
         <div

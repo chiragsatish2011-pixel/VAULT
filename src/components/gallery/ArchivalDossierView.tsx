@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { ProjectSummary } from "@/types";
 import { OpenFileDetail } from "@/components/dossier/OpenFileDetail";
-import { Grid, List, FolderGit2, ArrowUpRight } from "lucide-react";
+import { Grid, List, ArrowUpRight } from "lucide-react";
 
 interface ArchivalDossierProps {
   projects: ProjectSummary[];

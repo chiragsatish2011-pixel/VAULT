@@ -140,15 +140,6 @@ export function ProjectShowcaseClient({ project, initialTab = "overview" }: Show
             borderColor: "rgba(255,255,255,0.25)",
           }}
         >
-          {/* Vertical Bookmark Tabs on Right Edge (Video 1) */}
-          <div className="absolute right-0 top-12 bottom-12 flex flex-col gap-2 pointer-events-none translate-x-[90%] z-20 hidden lg:flex">
-            <div className="px-3 py-6 rounded-r-lg bg-[#DC2626] text-white text-[10px] font-mono tracking-widest uppercase writing-mode-vertical shadow-md border-r border-t border-b border-red-400">
-              Varnell Collection
-            </div>
-            <div className="px-3 py-6 rounded-r-lg bg-[#1D4ED8] text-white text-[10px] font-mono tracking-widest uppercase writing-mode-vertical shadow-md border-r border-t border-b border-blue-400">
-              Peripheral Entry
-            </div>
-          </div>
 
           {/* White Paper Sheet Inside with Binder Holes */}
           <div className="w-full bg-[#FAF9F5] text-[#121214] rounded-xl shadow-2xl p-6 sm:p-10 relative flex flex-col font-mono min-h-[600px] overflow-hidden">

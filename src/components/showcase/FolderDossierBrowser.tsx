@@ -77,13 +77,8 @@ export function FolderDossierBrowser({ project }: FolderDossierProps) {
       {/* Top Header Strip with Editorial Typography */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-vault-border">
         <div>
-          <div className="flex items-center gap-2 text-[11px] font-mono text-vault-subtle uppercase">
-            <span>REPOSITORY DOSSIER</span>
-            <span>//</span>
-            <span>{project.slug}</span>
-          </div>
-          <h2 className="font-editorial text-2xl sm:text-3xl font-bold text-white tracking-wide mt-1">
-            Archival Code Tree & Manifests
+          <h2 className="font-editorial text-2xl sm:text-3xl font-bold text-white tracking-wide">
+            Source Tree & Manifests
           </h2>
         </div>
 
@@ -188,32 +183,13 @@ export function FolderDossierBrowser({ project }: FolderDossierProps) {
               {/* Top Header of Document */}
               <div className="pl-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-neutral-300">
                 <div>
-                  <div className="text-[10px] font-mono tracking-widest text-neutral-500 uppercase">
-                    FILE ID #{String(selectedIndex + 1).padStart(2, "0")} // ARCHIVE RECORD
-                  </div>
-                  <h3 className="font-editorial text-2xl sm:text-3xl font-bold text-neutral-900 mt-1">
+                  <h3 className="font-editorial text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight">
                     {selectedFile?.path}
                   </h3>
                   <div className="flex items-center gap-2 text-xs text-neutral-600 mt-1 font-mono">
                     <span>Sha: {selectedFile?.sha?.slice(0, 7) || "HEAD"}</span>
                     <span>•</span>
                     <span>Size: {((selectedFile?.size || 0) / 1024).toFixed(1)} KB</span>
-                  </div>
-                </div>
-
-                {/* Yellow Clipped Receipt / Sticky Note (Video 1 Aesthetic) */}
-                <div className="relative bg-[#FEF08A] text-[#713F12] border border-[#FACC15] p-3 rounded shadow-md transform rotate-1 max-w-xs shrink-0 select-none">
-                  {/* Paperclip */}
-                  <div className="absolute -top-3 left-4 text-neutral-500">
-                    <Paperclip className="w-5 h-5 transform -rotate-45" />
-                  </div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider border-b border-[#FACC15] pb-1 flex justify-between">
-                    <span>RECEIPT NOTE</span>
-                    <span>{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                  </div>
-                  <div className="text-[11px] mt-1 space-y-0.5">
-                    <div>• Verified repository</div>
-                    <div className="font-bold text-[#854D0E]">• Branch: main</div>
                   </div>
                 </div>
               </div>

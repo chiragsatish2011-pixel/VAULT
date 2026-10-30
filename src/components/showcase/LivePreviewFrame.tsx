@@ -129,8 +129,8 @@ export function LivePreviewFrame({ project }: LivePreviewProps) {
               <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
               <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
             </div>
-            <div className="text-[10px] font-mono text-vault-subtle uppercase tracking-wider">
-              {device} VIEWPORT // {project.title}
+            <div className="text-xs font-sans text-neutral-400 font-bold truncate max-w-sm">
+              {project.title}
             </div>
             <div className="w-8" />
           </div>

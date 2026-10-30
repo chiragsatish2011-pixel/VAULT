@@ -219,8 +219,8 @@ export function LiquidBlastModal({ project, onClose }: LiquidBlastModalProps) {
               <span className="truncate">{project.liveUrl}</span>
             </div>
 
-            <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest font-bold">
-              {device} view
+            <div className="text-xs font-sans text-neutral-400 font-bold capitalize">
+              {device}
             </div>
           </div>
 

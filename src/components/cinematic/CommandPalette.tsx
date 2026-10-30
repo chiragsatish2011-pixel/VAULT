@@ -239,7 +239,7 @@ export function CommandPalette() {
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-neutral-400 truncate mt-0.5 font-mono">
+                      <div className="text-xs text-neutral-400 truncate mt-0.5 font-sans font-medium">
                         {item.subtitle}
                       </div>
                     </div>
@@ -257,13 +257,13 @@ export function CommandPalette() {
         </div>
 
         {/* Footer info */}
-        <div className="px-5 py-3 border-t border-neutral-900 bg-black flex items-center justify-between text-[11px] font-mono text-neutral-500">
+        <div className="px-5 py-3 border-t border-neutral-900 bg-black flex items-center justify-between text-xs font-mono text-neutral-500">
           <div className="flex items-center gap-3">
             <span>↑↓ Navigate</span>
             <span>↵ Select</span>
             <span>ESC Close</span>
           </div>
-          <span>{items.length} RESULTS</span>
+          <span className="font-sans font-semibold text-neutral-400">{items.length} Results</span>
         </div>
       </div>
     </div>

@@ -5,6 +5,9 @@ import db from "@/lib/db";
 import { validateSafeUrl } from "@/lib/ssrf-guard";
 import { FALLBACK_PROJECTS } from "@/lib/fallback-projects";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 30; // 30s max duration on Vercel
+
 interface SyncRequestBody {
   repoUrl?: string;
   liveUrl?: string;
@@ -22,7 +25,7 @@ export async function POST(req: NextRequest) {
     // Validate that at least ONE URL is provided
     if (!repoUrl && !liveUrl) {
       return NextResponse.json(
-        { error: "Please provide either a GitHub repository URL or a live website URL (or both)." },
+        { error: "Please provide either a GitHub repository link or a website URL (or both)." },
         { status: 400 }
       );
     }
@@ -30,8 +33,8 @@ export async function POST(req: NextRequest) {
     let parsedOwner = "";
     let parsedRepo = "";
     let derivedSlug = "";
-    let effectiveTitle = title || "";
-    let effectiveDescription = description || "";
+    let effectiveTitle = title ? title.trim() : "";
+    let effectiveDescription = description ? description.trim() : "";
     let effectiveLiveUrl = liveUrl ? liveUrl.trim() : "";
     let effectiveRepoUrl = repoUrl ? repoUrl.trim() : "";
     let detectedTech: string[] = tags || [];
@@ -111,14 +114,14 @@ export async function POST(req: NextRequest) {
           title: existingProject.title,
           tagline: existingProject.tagline,
           liveUrl: existingProject.liveUrl,
-          repoUrl: existingProject.repoUrl,
+          repoUrl: effectiveRepoUrl || existingProject.repoUrl,
           bannerUrl: bannerPath,
           updatedAt: existingProject.updatedAt || new Date().toISOString(),
         },
       });
     }
 
-    // 4. Fetch GitHub metadata if repo is provided
+    // 4. Fetch GitHub metadata if repo is provided (with fast 5s timeout)
     let repoMeta: any = null;
     let tree: any[] = [];
     let defaultBranch = "main";
@@ -134,7 +137,11 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const metaRes = await fetch(ghApiUrl, { headers });
+        const ghController = new AbortController();
+        const ghTimeout = setTimeout(() => ghController.abort(), 5000);
+        const metaRes = await fetch(ghApiUrl, { headers, signal: ghController.signal });
+        clearTimeout(ghTimeout);
+
         if (metaRes.ok) {
           repoMeta = await metaRes.json();
           defaultBranch = repoMeta.default_branch || "main";
@@ -148,12 +155,16 @@ export async function POST(req: NextRequest) {
         console.warn("GitHub API metadata fetch note:", e.message);
       }
 
-      // Fetch Tree
+      // Fetch Tree with fast 5s timeout
       try {
+        const treeController = new AbortController();
+        const treeTimeout = setTimeout(() => treeController.abort(), 5000);
         const treeRes = await fetch(
           `https://api.github.com/repos/${parsedOwner}/${parsedRepo}/git/trees/${defaultBranch}?recursive=1`,
-          { headers }
+          { headers, signal: treeController.signal }
         );
+        clearTimeout(treeTimeout);
+
         if (treeRes.ok) {
           const treeData = await treeRes.json();
           tree = (treeData.tree || []).slice(0, 100);
@@ -161,11 +172,11 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // 5. If Web URL is provided, fetch HTML to detect tech and meta if missing
+    // 5. If Web URL is provided, fetch HTML to detect tech and meta if missing (fast 4s timeout)
     if (effectiveLiveUrl && (!effectiveTitle || !effectiveDescription)) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
+        const timeout = setTimeout(() => controller.abort(), 4000);
         const pageRes = await fetch(effectiveLiveUrl, {
           signal: controller.signal,
           headers: {
@@ -199,53 +210,67 @@ export async function POST(req: NextRequest) {
     if (!effectiveLiveUrl) effectiveLiveUrl = `https://${derivedSlug}.vercel.app/`;
 
     // 6. Automated 16:9 Banner Capture
+    // Check if in serverless (e.g. Vercel)
+    const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
     const capturesDir = path.join(process.cwd(), "public", "captures");
-    if (!fs.existsSync(capturesDir)) {
-      try {
-        fs.mkdirSync(capturesDir, { recursive: true });
-      } catch {}
-    }
-
     const outWebpName = `${derivedSlug}.webp`;
     const outWebpPath = path.join(capturesDir, outWebpName);
-    const relativeCaptureUrl = `/captures/${outWebpName}`;
+    
+    // Default relative path
+    let relativeCaptureUrl = `/captures/${outWebpName}`;
     let captureSuccess = false;
 
     if (effectiveLiveUrl) {
-      try {
-        const { chromium } = await import("playwright");
-        const browser = await chromium.launch({ headless: true });
-        const context = await browser.newContext({
-          viewport: { width: 1920, height: 1080 },
-          deviceScaleFactor: 1,
-        });
-        const page = await context.newPage();
-        await page.goto(effectiveLiveUrl, { waitUntil: "networkidle", timeout: 10000 });
-        await page.waitForTimeout(1000);
-        await page.screenshot({ path: outWebpPath, type: "webp", quality: 90 });
-        await browser.close();
+      if (isServerless) {
+        // In Serverless cloud environments (Vercel), avoid heavyweight browser launches that time out
+        relativeCaptureUrl = `https://image.thum.io/get/width/1920/crop/1080/noanimate/${effectiveLiveUrl}`;
         captureSuccess = true;
-      } catch (err: any) {
-        console.warn("Playwright capture fallback:", err.message);
-        // Fallback capture
+      } else {
+        // In Local/Container environments, use Playwright with fast fallback
         try {
-          const fallbackCaptureUrl = `https://image.thum.io/get/width/1920/crop/1080/noanimate/${effectiveLiveUrl}`;
-          const snapRes = await fetch(fallbackCaptureUrl);
-          if (snapRes.ok) {
-            const buffer = await snapRes.arrayBuffer();
-            fs.writeFileSync(outWebpPath, Buffer.from(buffer));
-            captureSuccess = true;
+          if (!fs.existsSync(capturesDir)) {
+            try { fs.mkdirSync(capturesDir, { recursive: true }); } catch {}
           }
-        } catch {}
+          const { chromium } = await import("playwright");
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext({
+            viewport: { width: 1920, height: 1080 },
+            deviceScaleFactor: 1,
+          });
+          const page = await context.newPage();
+          await page.goto(effectiveLiveUrl, { waitUntil: "networkidle", timeout: 8000 });
+          await page.waitForTimeout(600);
+          await page.screenshot({ path: outWebpPath, type: "webp", quality: 90 });
+          await browser.close();
+          captureSuccess = true;
+        } catch (err: any) {
+          console.warn("Playwright capture note:", err.message);
+          // Fast cloud snapshot fallback
+          try {
+            const fallbackCaptureUrl = `https://image.thum.io/get/width/1920/crop/1080/noanimate/${effectiveLiveUrl}`;
+            const snapController = new AbortController();
+            const snapTimeout = setTimeout(() => snapController.abort(), 4000);
+            const snapRes = await fetch(fallbackCaptureUrl, { signal: snapController.signal });
+            clearTimeout(snapTimeout);
+            if (snapRes.ok) {
+              const buffer = await snapRes.arrayBuffer();
+              try { fs.writeFileSync(outWebpPath, Buffer.from(buffer)); } catch {}
+              captureSuccess = true;
+            }
+          } catch {
+            relativeCaptureUrl = `https://image.thum.io/get/width/1920/crop/1080/noanimate/${effectiveLiveUrl}`;
+          }
+        }
       }
     }
 
-    // 7. Persist to Database
-    let dbProject = null;
+    // 7. Persist to Database (defensive: handles read-only SQLite files gracefully)
     const finalTags = Array.from(new Set([...detectedTech, "Verified", "Production"]));
 
     try {
       const existing = await db.project.findUnique({ where: { slug: derivedSlug } });
+      let dbProject = null;
+
       if (existing) {
         dbProject = await db.project.update({
           where: { slug: derivedSlug },
@@ -274,43 +299,45 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Upsert Assets
-      await db.asset.deleteMany({ where: { projectId: dbProject.id } });
-      await db.asset.createMany({
-        data: [
-          {
-            projectId: dbProject.id,
-            type: "screenshot",
-            path: relativeCaptureUrl,
-            viewport: "desktop",
-          },
-          {
-            projectId: dbProject.id,
-            type: "cover",
-            path: relativeCaptureUrl,
-          },
-        ],
-      });
-
-      // Upsert RepoSnapshot if tree is available
-      if (tree.length > 0) {
-        await db.repoSnapshot.deleteMany({ where: { projectId: dbProject.id } });
-        await db.repoSnapshot.create({
-          data: {
-            projectId: dbProject.id,
-            tree: JSON.stringify(tree),
-            languages: JSON.stringify({ TypeScript: 80, JavaScript: 20 }),
-            commits: JSON.stringify([]),
-            releases: JSON.stringify([]),
-            manifests: JSON.stringify({}),
-          },
+      if (dbProject) {
+        // Upsert Assets
+        await db.asset.deleteMany({ where: { projectId: dbProject.id } });
+        await db.asset.createMany({
+          data: [
+            {
+              projectId: dbProject.id,
+              type: "screenshot",
+              path: relativeCaptureUrl,
+              viewport: "desktop",
+            },
+            {
+              projectId: dbProject.id,
+              type: "cover",
+              path: relativeCaptureUrl,
+            },
+          ],
         });
+
+        // Upsert RepoSnapshot if tree is available
+        if (tree.length > 0) {
+          await db.repoSnapshot.deleteMany({ where: { projectId: dbProject.id } });
+          await db.repoSnapshot.create({
+            data: {
+              projectId: dbProject.id,
+              tree: JSON.stringify(tree),
+              languages: JSON.stringify({ TypeScript: 80, JavaScript: 20 }),
+              commits: JSON.stringify([]),
+              releases: JSON.stringify([]),
+              manifests: JSON.stringify({}),
+            },
+          });
+        }
       }
     } catch (dbErr: any) {
-      console.warn("Database persist note:", dbErr.message);
+      console.warn("Database persist note (read-only filesystem or serverless fallback):", dbErr.message);
     }
 
-    // 8. Update JSON Cache File
+    // 8. Update JSON Cache File (safely ignores if filesystem is read-only on Vercel)
     try {
       const cachePath = path.join(process.cwd(), "public", "github-repos-cache.json");
       let cacheData: Record<string, any> = {};

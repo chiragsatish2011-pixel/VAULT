@@ -27,10 +27,19 @@ async function testProductionReadiness() {
     const content = await page.content();
     const forbiddenPatterns = [
       "UNINDEXED MATERIALS",
+      "17 VERIFIED PUBLIC REPOSITORIES",
       "FRAGMENT 16A",
       "ZERO HALLUCINATION",
       "LIVE VERIFIED",
-      "SCROLL TO TURN PAGES"
+      "SCROLL TO TURN PAGES",
+      "REPOSITORY DOSSIER",
+      "FILE ID #",
+      "RECEIPT NOTE",
+      "Varnell Collection",
+      "Peripheral Entry",
+      "(files) AUTHENTIC",
+      "Spec // Live",
+      "Files Explaned",
     ];
 
     for (const pat of forbiddenPatterns) {
