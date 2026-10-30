@@ -3,6 +3,7 @@ import { GalleryView } from "@/components/gallery/GalleryView";
 import { ProjectSummary } from "@/types";
 import { FALLBACK_PROJECTS } from "@/lib/fallback-projects";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0; // Fresh data for showcases
 
 export default async function HomePage() {

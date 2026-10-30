@@ -4,6 +4,7 @@ import { ProjectDetail } from "@/types";
 import { ProjectShowcaseClient } from "./ProjectShowcaseClient";
 import { FALLBACK_PROJECTS } from "@/lib/fallback-projects";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 interface PageProps {

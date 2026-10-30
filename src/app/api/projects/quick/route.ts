@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
+import { FALLBACK_PROJECTS } from "@/lib/fallback-projects";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET() {
   try {
@@ -17,13 +21,25 @@ export async function GET() {
       orderBy: { orderIndex: "asc" },
     });
 
-    const parsed = projects.map((p) => ({
-      ...p,
-      tags: JSON.parse(p.tags || "[]"),
-    }));
-
-    return NextResponse.json(parsed);
+    if (projects && projects.length > 0) {
+      const parsed = projects.map((p) => ({
+        ...p,
+        tags: typeof p.tags === "string" ? JSON.parse(p.tags || "[]") : (p.tags || []),
+      }));
+      return NextResponse.json(parsed);
+    }
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.warn("Quick projects db fallback:", err.message);
   }
+
+  // Graceful fallback from verified showcase list
+  return NextResponse.json(
+    FALLBACK_PROJECTS.map((p) => ({
+      slug: p.slug,
+      title: p.title,
+      tagline: p.tagline,
+      tags: p.tags,
+      accentColor: p.accentColor,
+    }))
+  );
 }

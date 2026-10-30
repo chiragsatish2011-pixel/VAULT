@@ -31,7 +31,6 @@ export function HeaderNavbar() {
       <AddWebsiteModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onSuccess={() => window.location.reload()}
       />
 
       <header
