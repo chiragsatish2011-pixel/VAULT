@@ -16,8 +16,10 @@ export function AppleTile({ site, isPriority = false, index }: AppleTileProps) {
 
   // Fallback if thumbnail path is relative or needs default
   const imageSrc = imageError
-    ? "/captures/default-fallback.webp"
-    : site.thumbnailUrl || site.thumbnail1440 || site.thumbnail800 || "/captures/default-fallback.webp";
+    ? site.blurDataURL || "/captures/default-fallback.webp"
+    : site.thumbnailUrl || site.thumbnail1440 || site.thumbnail800 || site.blurDataURL || "/captures/default-fallback.webp";
+
+  const isDataUri = imageSrc.startsWith("data:");
 
   return (
     <div
@@ -41,11 +43,12 @@ export function AppleTile({ site, isPriority = false, index }: AppleTileProps) {
             src={imageSrc}
             alt={site.name}
             fill
+            unoptimized={isDataUri}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, (max-width: 1920px) 25vw, (max-width: 2560px) 20vw, 16.66vw"
             priority={isPriority}
             loading={isPriority ? "eager" : "lazy"}
             decoding="async"
-            placeholder={site.blurDataURL ? "blur" : "empty"}
+            placeholder={!isDataUri && site.blurDataURL ? "blur" : "empty"}
             blurDataURL={site.blurDataURL || undefined}
             onError={() => setImageError(true)}
             className="object-cover object-top w-full h-full transform transition-transform duration-700 ease-out group-hover:scale-[1.03] group-focus-visible:scale-[1.03]"

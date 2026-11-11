@@ -21,12 +21,12 @@ function sleep(ms: number) {
 }
 
 /**
- * Upload image buffer to Vercel Blob if token available, or write to public/captures
+ * Upload image buffer to Vercel Blob if token available, or return high-performance WebP Data URI
  */
 async function storeImage(slug: string, suffix: string, buffer: Buffer): Promise<string> {
   const filename = `${slug}${suffix}.webp`;
 
-  // 1. Check for Vercel Blob
+  // 1. Check for Vercel Blob (durable cloud storage if configured)
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
       const { put } = await import("@vercel/blob");
@@ -36,23 +36,29 @@ async function storeImage(slug: string, suffix: string, buffer: Buffer): Promise
       });
       return blob.url;
     } catch (err: any) {
-      console.warn("Vercel Blob upload failed, falling back to local/CDN URL:", err.message);
+      console.warn("Vercel Blob upload failed, falling back to data URI:", err.message);
     }
   }
 
-  // 2. Local filesystem storage
+  // 2. Cache locally to /tmp and public if writable
+  try {
+    const tmpDir = path.join("/tmp", "captures");
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+    fs.writeFileSync(path.join(tmpDir, filename), buffer);
+  } catch {}
+
   try {
     const capturesDir = path.join(process.cwd(), "public", "captures");
     if (!fs.existsSync(capturesDir)) {
       fs.mkdirSync(capturesDir, { recursive: true });
     }
-    const filePath = path.join(capturesDir, filename);
-    fs.writeFileSync(filePath, buffer);
-    return `/captures/${filename}`;
-  } catch (err: any) {
-    console.warn("Could not write to local filesystem (read-only environment):", err.message);
-    return `/captures/${filename}`;
-  }
+    fs.writeFileSync(path.join(capturesDir, filename), buffer);
+  } catch {}
+
+  // 3. Ultra-resilient WebP Data URI (works 100% serverless, zero 404s, zero broken image icons)
+  return `data:image/webp;base64,${buffer.toString("base64")}`;
 }
 
 /**
@@ -136,6 +142,27 @@ async function getBrowser() {
     defaultViewport: { width: 1440, height: 900, deviceScaleFactor: 1 },
     headless: true,
   });
+}
+
+/**
+ * Format a human-readable fallback title from a domain or path
+ */
+function formatFallbackTitle(urlStr: string, slug: string): string {
+  try {
+    const parsed = new URL(urlStr);
+    const host = parsed.hostname.replace(/^(www\.)/i, "");
+    const parts = host.split(".");
+    const main = parts.length > 1 ? parts[0] : host;
+    return main
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  } catch {
+    return slug
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
 }
 
 /**
@@ -252,6 +279,11 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
           html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
         if (titleMatch) meta.title = titleMatch[1].trim();
         if (descMatch) meta.description = descMatch[1].trim();
+
+        const iconMatch =
+          html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i) ||
+          html.match(/<link[^>]*rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i);
+        if (iconMatch) meta.favicon = iconMatch[1].trim();
       } catch (metaErr: any) {
         console.warn("HTML metadata fetch fallback error:", metaErr.message);
       }
@@ -295,17 +327,17 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
     // 7. Process with Sharp: Generate 1440w, 800w, 400w WebP + Base64 Blur Placeholder
     const webp1440 = await sharp(rawBuffer)
       .resize(1440, 900, { fit: "cover", position: "top" })
-      .webp({ quality: 85 })
+      .webp({ quality: 80 })
       .toBuffer();
 
     const webp800 = await sharp(rawBuffer)
       .resize(800, 500, { fit: "cover", position: "top" })
-      .webp({ quality: 82 })
+      .webp({ quality: 78 })
       .toBuffer();
 
     const webp400 = await sharp(rawBuffer)
       .resize(400, 250, { fit: "cover", position: "top" })
-      .webp({ quality: 80 })
+      .webp({ quality: 75 })
       .toBuffer();
 
     // 20px blur placeholder data URI
@@ -315,13 +347,15 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
       .toBuffer();
     const blurDataURL = `data:image/webp;base64,${blurBuffer.toString("base64")}`;
 
-    // 8. Store images
+    // 8. Store images (Returns Vercel Blob URL if configured, or high-efficiency WebP Data URI)
     const thumbnailUrl = await storeImage(slug, "", webp1440);
     const thumbnail800 = await storeImage(slug, "-800w", webp800);
     const thumbnail400 = await storeImage(slug, "-400w", webp400);
 
+    const finalTitle = meta.title.trim() || formatFallbackTitle(validUrl, slug);
+
     return {
-      title: meta.title.trim() || slug,
+      title: finalTitle,
       description: meta.description.trim() || "",
       faviconUrl: resolvedFavicon,
       thumbnailUrl,

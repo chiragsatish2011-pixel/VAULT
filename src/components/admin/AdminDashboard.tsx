@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -21,10 +21,14 @@ import {
   Camera,
   Sparkles,
   Layers,
-  Shield,
+  Copy,
+  Download,
+  Search,
   ArrowUpRight,
+  CheckCircle2,
 } from "lucide-react";
-import { SiteItem } from "@/lib/sites-store";
+import type { SiteItem } from "@/lib/sites-store";
+import { normalizeUrl } from "@/lib/url-utils";
 
 export function AdminDashboard() {
   const [sites, setSites] = useState<SiteItem[]>([]);
@@ -44,6 +48,10 @@ export function AdminDashboard() {
     thumbnail400?: string;
     blurDataURL: string;
   } | null>(null);
+  const [previewImgError, setPreviewImgError] = useState(false);
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Editing state
   const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
@@ -53,8 +61,9 @@ export function AdminDashboard() {
     url: "",
   });
 
-  // Action status notification
+  // Action status notification & copy feedback
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fetchSites = async () => {
     try {
@@ -84,7 +93,8 @@ export function AdminDashboard() {
     if (!inputUrl.trim() || isCapturing) return;
 
     setIsCapturing(true);
-    setCaptureStatus("Launching headless Chromium & waiting 5s for render settling...");
+    setPreviewImgError(false);
+    setCaptureStatus("Launching capture engine and settling viewport...");
     setError(null);
 
     try {
@@ -118,7 +128,14 @@ export function AdminDashboard() {
     }
   };
 
-  // 2. Save captured site to store
+  // Check if current capturedPreview already exists in archive
+  const existingSiteMatch = useMemo(() => {
+    if (!capturedPreview) return null;
+    const incomingNorm = normalizeUrl(capturedPreview.url);
+    return sites.find((s) => normalizeUrl(s.url) === incomingNorm) || null;
+  }, [capturedPreview, sites]);
+
+  // 2. Save / Publish captured site to store
   const handleConfirmAddSite = async () => {
     if (!capturedPreview) return;
 
@@ -132,9 +149,14 @@ export function AdminDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save site.");
 
+      const isUpdate = Boolean(existingSiteMatch);
       setCapturedPreview(null);
       setInputUrl("");
-      setActionNotice(`Published "${data.site.name}" to VAULT.`);
+      setActionNotice(
+        isUpdate
+          ? `Updated "${data.site.name}" in VAULT.`
+          : `Published "${data.site.name}" to VAULT.`
+      );
       setTimeout(() => setActionNotice(null), 3500);
       fetchSites();
     } catch (err: any) {
@@ -144,7 +166,7 @@ export function AdminDashboard() {
 
   // 3. Re-capture single existing site
   const handleRecapture = async (site: SiteItem) => {
-    setActionNotice(`Re-capturing ${site.name} (5s render settle)...`);
+    setActionNotice(`Re-capturing ${site.name}...`);
     try {
       const res = await fetch("/api/admin/capture", {
         method: "POST",
@@ -167,7 +189,7 @@ export function AdminDashboard() {
         }),
       });
 
-      setActionNotice(`Updated thumbnail for "${site.name}".`);
+      setActionNotice(`Updated snapshot for "${site.name}".`);
       setTimeout(() => setActionNotice(null), 3500);
       fetchSites();
     } catch (err: any) {
@@ -242,7 +264,46 @@ export function AdminDashboard() {
     }
   };
 
+  // 8. Copy URL with tactile feedback
+  const handleCopyUrl = (site: SiteItem) => {
+    navigator.clipboard.writeText(site.url);
+    setCopiedId(site.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // 9. Download archive backup JSON
+  const handleExportBackup = () => {
+    const blob = new Blob([JSON.stringify(sites, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `vault-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setActionNotice("Exported VAULT archive backup.");
+    setTimeout(() => setActionNotice(null), 3000);
+  };
+
   const liveSitesCount = sites.filter((s) => !s.hidden).length;
+
+  // Filtered sites based on search
+  const filteredSites = useMemo(() => {
+    if (!searchQuery.trim()) return sites;
+    const q = searchQuery.toLowerCase().trim();
+    return sites.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.url.toLowerCase().includes(q) ||
+        (s.description && s.description.toLowerCase().includes(q))
+    );
+  }, [sites, searchQuery]);
+
+  // Preview thumbnail fallback
+  const previewImgSrc = capturedPreview
+    ? previewImgError
+      ? capturedPreview.blurDataURL || "/captures/default-fallback.webp"
+      : capturedPreview.thumbnailUrl
+    : "";
 
   return (
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#000000] text-neutral-900 dark:text-neutral-100 font-sans selection:bg-[#0071e3] selection:text-white transition-colors duration-300">
@@ -261,13 +322,22 @@ export function AdminDashboard() {
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <button
+              onClick={handleExportBackup}
+              title="Download JSON archive backup"
+              className="text-xs font-medium text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Backup</span>
+            </button>
+
             <Link
               href="/"
               target="_blank"
               className="text-xs font-medium text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1.5 transition-colors"
             >
-              <span>View Live Gallery</span>
+              <span>View Gallery</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
 
@@ -397,18 +467,31 @@ export function AdminDashboard() {
                   <Sparkles className="w-4 h-4 text-apple-blue" />
                   <span>Review Captured Snapshot</span>
                 </h3>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
-                  Ready to Publish
-                </span>
+                {existingSiteMatch ? (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium">
+                    Existing Site (Will Update)
+                  </span>
+                ) : (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
+                    Ready to Publish
+                  </span>
+                )}
               </div>
+
+              {existingSiteMatch && (
+                <div className="py-2 px-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300">
+                  This deployment is already in your gallery. Publishing will refresh its screenshot and details.
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="relative aspect-[16/10] rounded-xl overflow-hidden border-2 border-black/20 dark:border-white/25 bg-black shadow-md">
                   <Image
-                    src={capturedPreview.thumbnailUrl}
+                    src={previewImgSrc}
                     alt={capturedPreview.name}
                     fill
                     unoptimized
+                    onError={() => setPreviewImgError(true)}
                     className="object-cover object-top"
                   />
                 </div>
@@ -447,7 +530,7 @@ export function AdminDashboard() {
                       onClick={handleConfirmAddSite}
                       className="px-6 py-2.5 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold cursor-pointer shadow-md transition-all active:scale-98"
                     >
-                      Publish to VAULT
+                      {existingSiteMatch ? "Update Site in VAULT" : "Publish to VAULT"}
                     </button>
                     <button
                       onClick={() => setCapturedPreview(null)}
@@ -466,7 +549,7 @@ export function AdminDashboard() {
         {/* SITE LIST & MANAGEMENT                                   */}
         {/* ======================================================== */}
         <section className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl sm:text-2xl font-semibold tracking-[-0.03em] text-neutral-950 dark:text-white">
                 Archived Sites ({sites.length})
@@ -475,6 +558,20 @@ export function AdminDashboard() {
                 Drag or reorder cards, edit metadata, refresh screenshots, or toggle live status.
               </p>
             </div>
+
+            {/* Quick Filter Search Bar */}
+            {sites.length > 0 && (
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter sites..."
+                  className="w-full h-9 pl-9 pr-3 rounded-xl bg-neutral-100 dark:bg-[#121216] border border-black/10 dark:border-white/15 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-apple-blue"
+                />
+              </div>
+            )}
           </div>
 
           {loading ? (
@@ -494,10 +591,15 @@ export function AdminDashboard() {
                 Paste any live URL into the capture field above to screenshot and index your first project.
               </p>
             </div>
+          ) : filteredSites.length === 0 ? (
+            <div className="py-12 text-center text-sm text-neutral-500">
+              No archived sites matched &quot;{searchQuery}&quot;.
+            </div>
           ) : (
             <div className="space-y-4">
-              {sites.map((site, idx) => {
+              {filteredSites.map((site, idx) => {
                 const isEditing = editingSiteId === site.id;
+                const isCopied = copiedId === site.id;
 
                 return (
                   <div
@@ -531,10 +633,10 @@ export function AdminDashboard() {
                           </button>
                         </div>
 
-                        {/* Thumbnail */}
+                        {/* Thumbnail with inline Data URI support */}
                         <div className="relative w-24 h-15 sm:w-28 sm:h-17 rounded-xl overflow-hidden border-2 border-black/10 dark:border-white/15 bg-black shrink-0 shadow-xs">
                           <Image
-                            src={site.thumbnailUrl || site.thumbnail800 || "/captures/default-fallback.webp"}
+                            src={site.thumbnailUrl || site.thumbnail800 || site.blurDataURL || "/captures/default-fallback.webp"}
                             alt={site.name}
                             fill
                             unoptimized
@@ -597,15 +699,17 @@ export function AdminDashboard() {
                               <p className="text-xs text-neutral-500 truncate mt-0.5">
                                 {site.description || "No description"}
                               </p>
-                              <a
-                                href={site.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] text-apple-blue hover:underline font-mono mt-1"
-                              >
-                                <span>{site.url}</span>
-                                <ArrowUpRight className="w-3 h-3" />
-                              </a>
+                              <div className="flex items-center gap-2 mt-1">
+                                <a
+                                  href={site.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[11px] text-apple-blue hover:underline font-mono"
+                                >
+                                  <span>{site.url}</span>
+                                  <ArrowUpRight className="w-3 h-3" />
+                                </a>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -614,10 +718,19 @@ export function AdminDashboard() {
                       {/* Right: Actions */}
                       {!isEditing && (
                         <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                          {/* Copy URL */}
+                          <button
+                            onClick={() => handleCopyUrl(site)}
+                            title={isCopied ? "Copied!" : "Copy URL"}
+                            className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+                          >
+                            {isCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                          </button>
+
                           {/* Recapture */}
                           <button
                             onClick={() => handleRecapture(site)}
-                            title="Re-capture fresh 1440w WebP thumbnail"
+                            title="Re-capture fresh thumbnail"
                             className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
                           >
                             <RefreshCw className="w-4 h-4" />
