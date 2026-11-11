@@ -2,7 +2,7 @@ import dns from "dns/promises";
 import net from "net";
 
 // RFC 1918, RFC 3927 (link-local/cloud metadata), loopback, RFC 4193 (IPv6 ULA)
-function isPrivateOrReservedIP(ip: string): boolean {
+export function isPrivateOrReservedIP(ip: string): boolean {
   if (net.isIPv4(ip)) {
     const parts = ip.split(".").map(Number);
     const [b0, b1] = parts;
@@ -27,6 +27,9 @@ function isPrivateOrReservedIP(ip: string): boolean {
 
     // 224.0.0.0/4 (Multicast)
     if (b0 >= 224) return true;
+
+    // 240.0.0.0/4 (Reserved)
+    if (b0 >= 240) return true;
 
     return false;
   }
@@ -58,20 +61,37 @@ export async function validateSafeUrl(rawUrl: string): Promise<{
       return { safe: false, error: "Only http and https protocols are permitted." };
     }
 
+    // Reject credentials in URLs (e.g. https://user:pass@example.com)
+    if (parsed.username || parsed.password) {
+      return { safe: false, error: "URLs containing embedded credentials are forbidden." };
+    }
+
     const hostname = parsed.hostname;
 
-    // Reject localhost, internal domains, AWS metadata aliases
+    // Reject localhost, internal domains, AWS/cloud metadata aliases
     if (
       hostname === "localhost" ||
+      hostname.endsWith(".localhost") ||
       hostname.endsWith(".local") ||
       hostname.endsWith(".internal") ||
       hostname.endsWith(".lan") ||
-      hostname.endsWith(".corp")
+      hostname.endsWith(".corp") ||
+      hostname === "instance-data" ||
+      hostname === "metadata.google.internal"
     ) {
       return { safe: false, error: "Internal or local network domains are forbidden." };
     }
 
-    // If it's already an IP address, check directly
+    // Check ports (only allow standard web ports)
+    if (parsed.port) {
+      const portNum = parseInt(parsed.port, 10);
+      const allowedPorts = [80, 443, 8080, 8443, 3000];
+      if (!allowedPorts.includes(portNum)) {
+        return { safe: false, error: `Port ${portNum} is not permitted for capture.` };
+      }
+    }
+
+    // If it's directly an IP address, check directly
     if (net.isIP(hostname)) {
       if (isPrivateOrReservedIP(hostname)) {
         return { safe: false, error: `Access to private/internal IP address (${hostname}) is blocked.` };
@@ -82,6 +102,10 @@ export async function validateSafeUrl(rawUrl: string): Promise<{
     // Resolve hostname via DNS
     try {
       const lookupResults = await dns.lookup(hostname, { all: true });
+      if (!lookupResults || lookupResults.length === 0) {
+        return { safe: false, error: `DNS resolution failed for hostname: ${hostname}` };
+      }
+
       for (const res of lookupResults) {
         if (isPrivateOrReservedIP(res.address)) {
           return {

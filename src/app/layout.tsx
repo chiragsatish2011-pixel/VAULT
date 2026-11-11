@@ -1,15 +1,40 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { HeaderNavbar } from "@/components/cinematic/HeaderNavbar";
-import { CommandPalette } from "@/components/cinematic/CommandPalette";
-import { MobileDesktopGuideModal } from "@/components/cinematic/MobileDesktopGuideModal";
+import { SmoothScrollProvider } from "@/components/gallery/SmoothScrollProvider";
 
 export const metadata: Metadata = {
-  title: "VAULT — Cinematic Showcase & Archival Dossier",
-  description: "Curated Production Deployments, Physical Git Archival Dossiers, and Live Rendered Case Studies.",
+  title: "VAULT — Works by Chirag S.",
+  description:
+    "A curated gallery of websites, digital experiences, and web applications designed and built by Chirag S.",
+  metadataBase: new URL("https://vault-showbook.vercel.app"),
+  openGraph: {
+    title: "VAULT — Works by Chirag S.",
+    description:
+      "A curated gallery of websites, digital experiences, and web applications designed and built by Chirag S.",
+    url: "https://vault-showbook.vercel.app",
+    siteName: "VAULT",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VAULT — Works by Chirag S.",
+    description:
+      "A curated gallery of websites, digital experiences, and web applications designed and built by Chirag S.",
+  },
   icons: {
     icon: "/favicon.ico",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbfbfd" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
 };
 
 export default function RootLayout({
@@ -18,25 +43,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-black text-white min-h-screen selection:bg-white selection:text-black antialiased relative">
-        {/* Subtle Archival Film Grain */}
-        <div className="archival-grain" aria-hidden="true" />
-
-        {/* Global Navigation */}
-        <HeaderNavbar />
-        <CommandPalette />
-        <MobileDesktopGuideModal />
-
-        <main className="relative z-10">{children}</main>
-
-        {/* Clean Monochrome Footer */}
-        <footer className="mt-24 border-t border-neutral-900 bg-black py-8 px-6 text-xs text-neutral-400 font-mono font-bold">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <span className="font-editorial text-base font-black text-white tracking-widest">VAULT</span>
-            <span className="text-neutral-500 font-bold">2026</span>
-          </div>
-        </footer>
+    <html lang="en">
+      <body className="min-h-screen bg-[#fbfbfd] dark:bg-[#000000] text-black dark:text-white transition-colors antialiased selection:bg-[#0071e3] selection:text-white dark:selection:bg-[#2997ff] dark:selection:text-black">
+        <SmoothScrollProvider>{children}</SmoothScrollProvider>
       </body>
     </html>
   );

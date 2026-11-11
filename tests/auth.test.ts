@@ -1,48 +1,75 @@
 import bcrypt from "bcryptjs";
-import { verifyPassphrase } from "../src/lib/auth";
-import { clearRateLimit, checkRateLimit } from "../src/lib/rate-limit";
+import {
+  verifyAdminPasskey,
+  createAdminSessionToken,
+  verifyAdminSessionToken,
+} from "../src/lib/auth-jwt";
+import {
+  checkLoginRateLimit,
+  recordFailedLoginAttempt,
+  clearLoginRateLimit,
+} from "../src/lib/rate-limiter";
 
 async function runAuthTests() {
   console.log("🔐 Running Administrative Security & Auth Unit Tests...");
 
-  const testIp = "192.0.2.42"; // Dedicated documentation IP
-  await clearRateLimit(testIp);
+  // Generate an ephemeral test passkey and hash for this test run only
+  const testPasskey = "test-ephemeral-passkey-" + Math.random().toString(36).substring(2);
+  const testHash = await bcrypt.hash(testPasskey, 10);
+  process.env.ADMIN_PASSKEY_HASH = testHash;
+  process.env.SESSION_SECRET = "test-session-secret-at-least-32-chars-long-abc-123";
 
-  // Test 1: Verify rejection of invalid passphrase
-  const wrongAttempt = await verifyPassphrase("wrong-password-123", testIp);
-  if (wrongAttempt.success) {
-    throw new Error("AUTH TEST FAILED: Wrong password succeeded!");
+  const testIp = "192.0.2.99";
+  await clearLoginRateLimit(testIp);
+
+  // Test 1: Verify rejection of invalid passkey
+  const wrongAttempt = await verifyAdminPasskey("wrong-password-xyz");
+  if (wrongAttempt) {
+    throw new Error("AUTH TEST FAILED: Wrong passkey succeeded!");
   }
-  console.log("  ✓ Correctly rejected invalid passphrase.");
+  console.log("  ✓ Correctly rejected invalid passkey.");
 
   // Test 2: Verify progressive rate limit lockout
-  // We already did 1 failed attempt, do 4 more to hit limit of 5
-  console.log("  ⏳ Simulating brute-force attempts to test progressive lockout...");
-  for (let i = 2; i <= 5; i++) {
-    await verifyPassphrase(`guess-${i}`, testIp);
+  console.log("  ⏳ Simulating failed attempts to test rate limiter...");
+  for (let i = 1; i <= 5; i++) {
+    await recordFailedLoginAttempt(testIp);
   }
 
-  // 6th attempt should be blocked by rate limiter
-  const lockedAttempt = await verifyPassphrase("vault-master-key", testIp);
-  if (lockedAttempt.success) {
-    throw new Error("AUTH TEST FAILED: Rate limiter allowed attempt during lockout!");
+  const rateLimitStatus = await checkLoginRateLimit(testIp);
+  if (rateLimitStatus.allowed) {
+    throw new Error("AUTH TEST FAILED: Rate limiter allowed 6th attempt after 5 failures!");
   }
-  if (!lockedAttempt.error?.includes("Locked out") && !lockedAttempt.error?.includes("Too many failed attempts")) {
-    throw new Error(`AUTH TEST FAILED: Lockout message expected, got: ${lockedAttempt.error}`);
-  }
-  console.log(`  ✓ Lockout triggered successfully: "${lockedAttempt.error}"`);
+  console.log(`  ✓ Lockout triggered successfully (remaining attempts: ${rateLimitStatus.remaining})`);
 
-  // Test 3: Clear rate limit and verify genuine master passphrase
-  await clearRateLimit(testIp);
-  const correctAttempt = await verifyPassphrase("vault-master-key", testIp);
-  if (!correctAttempt.success || !correctAttempt.sessionToken) {
-    throw new Error(`AUTH TEST FAILED: Valid passphrase failed: ${correctAttempt.error}`);
+  // Test 3: Clear rate limit and verify genuine passkey
+  await clearLoginRateLimit(testIp);
+  const correctAttempt = await verifyAdminPasskey(testPasskey);
+  if (!correctAttempt) {
+    throw new Error("AUTH TEST FAILED: Valid passkey was rejected!");
   }
-  console.log("  ✓ Authenticated successfully with master passphrase.");
-  console.log(`  ✓ Generated cryptographically secure session: ${correctAttempt.sessionToken.slice(0, 16)}...`);
+  console.log("  ✓ Authenticated successfully with valid passkey.");
 
-  await clearRateLimit(testIp);
-  console.log("✅ All Auth & Rate Limiting tests passed successfully!\n");
+  // Test 4: Issue and verify signed JWT session token
+  const token = await createAdminSessionToken();
+  if (!token) {
+    throw new Error("AUTH TEST FAILED: Failed to create signed JWT session token.");
+  }
+  const isValid = await verifyAdminSessionToken(token);
+  if (!isValid) {
+    throw new Error("AUTH TEST FAILED: Failed to verify signed session JWT.");
+  }
+  console.log("  ✓ Cryptographically verified signed JWT token.");
+
+  // Test 5: Verify tampering detection on JWT
+  const tamperedToken = token.slice(0, -6) + "abcdef";
+  const isTamperedValid = await verifyAdminSessionToken(tamperedToken);
+  if (isTamperedValid) {
+    throw new Error("AUTH TEST FAILED: Tampered token was accepted!");
+  }
+  console.log("  ✓ Cryptographically rejected tampered JWT token.");
+
+  await clearLoginRateLimit(testIp);
+  console.log("✅ All Auth, JWT & Rate Limiting tests passed successfully!\n");
 }
 
 runAuthTests().catch((e) => {

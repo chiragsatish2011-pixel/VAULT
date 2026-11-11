@@ -1,63 +1,35 @@
-import db from "@/lib/db";
-import { GalleryView } from "@/components/gallery/GalleryView";
-import { ProjectSummary } from "@/types";
-import { FALLBACK_PROJECTS } from "@/lib/fallback-projects";
+import { getAllSites } from "@/lib/sites-store";
+import { AppleNav } from "@/components/gallery/AppleNav";
+import { AppleHero } from "@/components/gallery/AppleHero";
+import { AppleGrid } from "@/components/gallery/AppleGrid";
+import { AppleFooter } from "@/components/gallery/AppleFooter";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0; // Fresh data for showcases
+export const revalidate = 60; // ISR cache with on-demand tag revalidation
 
 export default async function HomePage() {
-  let formattedProjects: ProjectSummary[] = [];
+  const sites = await getAllSites(false);
 
-  try {
-    const projects = await db.project.findMany({
-      where: {
-        visibility: { not: "draft" },
-      },
-      include: {
-        assets: true,
-      },
-      orderBy: [
-        { featured: "desc" },
-        { orderIndex: "asc" },
-        { createdAt: "desc" },
-      ],
-    });
+  return (
+    <div className="min-h-screen flex flex-col bg-[#fbfbfd] dark:bg-[#000000] text-black dark:text-white transition-colors">
+      {/* Skip to Content for Accessibility */}
+      <a href="#main-content" className="skip-link">
+        Skip to gallery content
+      </a>
 
-    if (projects && projects.length > 0) {
-      formattedProjects = projects.map((p) => ({
-        id: p.id,
-        slug: p.slug,
-        title: p.title,
-        tagline: p.tagline,
-        description: p.description,
-        liveUrl: p.liveUrl,
-        repoUrl: p.repoUrl,
-        hostingNotes: p.hostingNotes,
-        status: p.status as "Live" | "WIP" | "Archived",
-        visibility: p.visibility as "public" | "unlisted" | "draft",
-        featured: p.featured,
-        tags: JSON.parse(p.tags || "[]"),
-        accentColor: p.accentColor,
-        lastSyncedSha: p.lastSyncedSha,
-        orderIndex: p.orderIndex,
-        createdAt: p.createdAt.toISOString(),
-        updatedAt: p.updatedAt.toISOString(),
-        assets: p.assets.map((a) => ({
-          id: a.id,
-          projectId: a.projectId,
-          type: a.type as any,
-          path: a.path,
-          viewport: a.viewport as any,
-        })),
-      }));
-    }
-  } catch (err) {
-    console.warn("Database fallback active for edge/cloud deploy:", err);
-  }
+      {/* Translucent Frosted Top Navigation */}
+      <AppleNav totalCount={sites.length} />
 
-  // Graceful fallback to verified showcase projects on clean Vercel deployments
-  const finalProjects = formattedProjects.length > 0 ? formattedProjects : FALLBACK_PROJECTS;
+      {/* Main Content Area */}
+      <main id="main-content" className="flex-1 w-full">
+        {/* Apple Product Page Style Hero */}
+        <AppleHero />
 
-  return <GalleryView initialProjects={finalProjects} />;
+        {/* Edge-to-Edge Screen Wall Grid */}
+        <AppleGrid sites={sites} />
+      </main>
+
+      {/* Minimal Apple-style Footer */}
+      <AppleFooter totalCount={sites.length} />
+    </div>
+  );
 }
