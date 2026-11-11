@@ -38,11 +38,14 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     }
 
     revalidatePath("/");
+    revalidatePath("/chirag");
     return NextResponse.json({ success: true, site: updated });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to update site" }, { status: 500 });
   }
 }
+
+export const PATCH = PUT;
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   if (!(await isAuthenticated())) {
@@ -56,6 +59,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     }
 
     revalidatePath("/");
+    revalidatePath("/chirag");
     return NextResponse.json({ success: true, message: "Site deleted" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to delete site" }, { status: 500 });

@@ -29,6 +29,7 @@ import {
   CheckCircle2,
   Clock,
   ImagePlus,
+  X,
 } from "lucide-react";
 import type { SiteItem } from "@/lib/sites-store";
 import { INITIAL_VAULT_SITES } from "@/lib/initial-sites";
@@ -65,13 +66,29 @@ export function AdminDashboard() {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Editing state
-  const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ name: string; description: string; url: string }>({
+  // Full site editing modal state
+  const [editingSite, setEditingSite] = useState<SiteItem | null>(null);
+  const [editForm, setEditForm] = useState<{
+    name: string;
+    description: string;
+    url: string;
+    thumbnailUrl: string;
+    thumbnail800?: string;
+    thumbnail400?: string;
+    blurDataURL?: string;
+    hidden: boolean;
+    order: number;
+  }>({
     name: "",
     description: "",
     url: "",
+    thumbnailUrl: "",
+    hidden: false,
+    order: 0,
   });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isModalCapturing, setIsModalCapturing] = useState(false);
+  const editModalImageInputRef = useRef<HTMLInputElement>(null);
 
   // Action status notification & copy feedback
   const [actionNotice, setActionNotice] = useState<string | null>(null);
@@ -82,7 +99,7 @@ export function AdminDashboard() {
       const res = await fetch("/api/admin/sites");
       if (!res.ok) throw new Error("Failed to load sites.");
       const data = await res.json();
-      const serverSites = data.sites || [];
+      const serverSites: SiteItem[] = data.sites || [];
 
       // Check localStorage for offline / multi-container resilience
       let localSaved: SiteItem[] = [];
@@ -91,28 +108,69 @@ export function AdminDashboard() {
         if (raw) localSaved = JSON.parse(raw);
       } catch {}
 
-      if (serverSites.length > 0) {
-        setSites(serverSites);
-        try {
-          localStorage.setItem("vault_curated_sites", JSON.stringify(serverSites));
-        } catch {}
+      // Smart Reconciliation: merge server sites and local client edits without data loss
+      let finalSites = serverSites;
+      if (localSaved.length > 0 && serverSites.length > 0) {
+        const serverMap = new Map(serverSites.map((s) => [s.id, s]));
+        const serverUrlMap = new Map(serverSites.map((s) => [normalizeUrl(s.url), s]));
+
+        let hasNewerLocalEdits = false;
+        const merged = localSaved.map((localItem) => {
+          const matchingServer = serverMap.get(localItem.id) || serverUrlMap.get(normalizeUrl(localItem.url));
+          if (!matchingServer) {
+            hasNewerLocalEdits = true;
+            return localItem;
+          }
+          const localTime = new Date(localItem.updatedAt || 0).getTime();
+          const serverTime = new Date(matchingServer.updatedAt || 0).getTime();
+          if (localTime > serverTime) {
+            hasNewerLocalEdits = true;
+            return { ...matchingServer, ...localItem };
+          }
+          return matchingServer;
+        });
+
+        // Include any new server sites
+        const localIdSet = new Set(localSaved.map((s) => s.id));
+        const localUrlSet = new Set(localSaved.map((s) => normalizeUrl(s.url)));
+        serverSites.forEach((s) => {
+          if (!localIdSet.has(s.id) && !localUrlSet.has(normalizeUrl(s.url))) {
+            merged.push(s);
+          }
+        });
+
+        if (hasNewerLocalEdits) {
+          finalSites = merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+          fetch("/api/admin/sites/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sites: finalSites }),
+          }).catch(() => {});
+        } else {
+          finalSites = serverSites;
+        }
+      } else if (serverSites.length > 0) {
+        finalSites = serverSites;
       } else if (localSaved.length > 0) {
-        // Hydrate from localStorage and sync to current container
-        setSites(localSaved);
+        finalSites = localSaved;
         fetch("/api/admin/sites/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sites: localSaved }),
         }).catch(() => {});
       } else {
-        // Absolute fallback to compiled 27 initial sites
-        setSites(INITIAL_VAULT_SITES);
+        finalSites = INITIAL_VAULT_SITES;
         fetch("/api/admin/sites/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sites: INITIAL_VAULT_SITES }),
         }).catch(() => {});
       }
+
+      setSites(finalSites);
+      try {
+        localStorage.setItem("vault_curated_sites", JSON.stringify(finalSites));
+      } catch {}
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -456,23 +514,170 @@ export function AdminDashboard() {
     }
   };
 
-  // 7. Edit details
-  const handleSaveEdit = async (id: string) => {
+  // 7. Full site editing console
+  const handleOpenEdit = (site: SiteItem) => {
+    setEditingSite(site);
+    setEditForm({
+      name: site.name,
+      description: site.description || "",
+      url: site.url,
+      thumbnailUrl: site.thumbnailUrl,
+      thumbnail800: site.thumbnail800,
+      thumbnail400: site.thumbnail400,
+      blurDataURL: site.blurDataURL,
+      hidden: Boolean(site.hidden),
+      order: site.order ?? 0,
+    });
+  };
+
+  const handleEditModalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingSite) return;
+
+    setIsUploadingImage(true);
+    setActionNotice("Optimizing replacement thumbnail with Sharp...");
+
     try {
-      const res = await fetch(`/api/admin/sites/${id}`, {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("siteId", editingSite.id);
+      formData.append("slug", editForm.name || "custom");
+
+      const res = await fetch("/api/admin/upload-thumbnail", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to process thumbnail.");
+      }
+
+      const cap = data.capture;
+      setEditForm((prev) => ({
+        ...prev,
+        thumbnailUrl: cap.thumbnailUrl,
+        thumbnail800: cap.thumbnail800,
+        thumbnail400: cap.thumbnail400,
+        blurDataURL: cap.blurDataURL,
+      }));
+
+      setActionNotice("✓ New thumbnail applied to edit draft.");
+      setTimeout(() => setActionNotice(null), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsUploadingImage(false);
+      if (editModalImageInputRef.current) editModalImageInputRef.current.value = "";
+    }
+  };
+
+  const handleModalRecapture = async () => {
+    if (!editForm.url.trim() || isModalCapturing) return;
+
+    setIsModalCapturing(true);
+    setActionNotice(`Re-capturing ${editForm.url} (waiting ${settleDelay}s for shaders to settle)...`);
+
+    try {
+      const res = await fetch("/api/admin/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: editForm.url.trim(),
+          settleSeconds: settleDelay,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to recapture URL.");
+      }
+
+      const cap = data.capture;
+      setEditForm((prev) => ({
+        ...prev,
+        name: prev.name || cap.title,
+        description: prev.description || cap.description,
+        thumbnailUrl: cap.thumbnailUrl,
+        thumbnail800: cap.thumbnail800,
+        thumbnail400: cap.thumbnail400,
+        blurDataURL: cap.blurDataURL,
+      }));
+
+      setActionNotice("✓ Fresh screenshot captured and applied!");
+      setTimeout(() => setActionNotice(null), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsModalCapturing(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingSite) return;
+    setIsSavingEdit(true);
+
+    try {
+      const res = await fetch(`/api/admin/sites/${editingSite.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editForm),
       });
+
       const data = await res.json();
-      if (data.site) {
-        const nextSites = sites.map((s) => (s.id === id ? data.site : s));
-        setSites(nextSites);
-        try {
-          localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
-        } catch {}
-      }
-      setEditingSiteId(null);
+      const updatedSite: SiteItem = data.site || {
+        ...editingSite,
+        ...editForm,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const nextSites = sites
+        .map((s) => (s.id === editingSite.id ? updatedSite : s))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+      setSites(nextSites);
+      try {
+        localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
+      } catch {}
+
+      // Synchronize with server store
+      fetch("/api/admin/sites/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sites: nextSites }),
+      }).catch(() => {});
+
+      setActionNotice(`✓ Saved changes for "${editForm.name}". Live gallery updated.`);
+      setTimeout(() => setActionNotice(null), 3500);
+      setEditingSite(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteFromModal = async () => {
+    if (!editingSite) return;
+    if (!window.confirm(`Are you sure you want to remove "${editingSite.name}" from VAULT?`)) return;
+
+    try {
+      await fetch(`/api/admin/sites/${editingSite.id}`, { method: "DELETE" });
+      const nextSites = sites.filter((s) => s.id !== editingSite.id);
+      setSites(nextSites);
+      try {
+        localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
+      } catch {}
+
+      fetch("/api/admin/sites/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sites: nextSites }),
+      }).catch(() => {});
+
+      setActionNotice(`Removed "${editingSite.name}".`);
+      setTimeout(() => setActionNotice(null), 3000);
+      setEditingSite(null);
     } catch (err: any) {
       setError(err.message);
     }
@@ -987,7 +1192,6 @@ export function AdminDashboard() {
           ) : (
             <div className="space-y-4">
               {filteredSites.map((site, idx) => {
-                const isEditing = editingSiteId === site.id;
                 const isCopied = copiedId === site.id;
 
                 return (
@@ -1045,141 +1249,102 @@ export function AdminDashboard() {
 
                         {/* Title & Description */}
                         <div className="min-w-0 flex-1">
-                          {isEditing ? (
-                            <div className="space-y-2">
-                              <input
-                                type="text"
-                                value={editForm.name}
-                                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                className="w-full h-8 px-2.5 rounded-lg bg-neutral-100 dark:bg-black border border-neutral-300 dark:border-neutral-700 text-xs font-semibold text-neutral-900 dark:text-white"
-                                placeholder="Site Name"
-                              />
-                              <input
-                                type="text"
-                                value={editForm.description}
-                                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                                className="w-full h-8 px-2.5 rounded-lg bg-neutral-100 dark:bg-black border border-neutral-300 dark:border-neutral-700 text-xs text-neutral-700 dark:text-neutral-300"
-                                placeholder="Description"
-                              />
-                              <input
-                                type="url"
-                                value={editForm.url}
-                                onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
-                                className="w-full h-8 px-2.5 rounded-lg bg-neutral-100 dark:bg-black border border-neutral-300 dark:border-neutral-700 text-xs text-neutral-700 dark:text-neutral-300 font-mono"
-                                placeholder="URL"
-                              />
-                              <div className="flex items-center gap-2 pt-1">
-                                <button
-                                  onClick={() => handleSaveEdit(site.id)}
-                                  className="px-3 py-1 rounded-md bg-apple-blue text-white text-xs font-medium cursor-pointer"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => setEditingSiteId(null)}
-                                  className="px-2.5 py-1 rounded-md bg-neutral-200 dark:bg-neutral-800 text-xs cursor-pointer"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-sm sm:text-base text-neutral-900 dark:text-white truncate">
+                                {site.name}
+                              </h3>
+                              {site.hidden ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium border border-amber-500/20">
+                                  Hidden
+                                </span>
+                              ) : (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20">
+                                  Live
+                                </span>
+                              )}
                             </div>
-                          ) : (
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-semibold text-sm sm:text-base text-neutral-900 dark:text-white truncate">
-                                  {site.name}
-                                </h3>
-                                {site.hidden && (
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-500 font-medium">
-                                    Hidden
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-neutral-500 truncate mt-0.5">
-                                {site.description || "No description"}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <a
-                                  href={site.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-[11px] text-apple-blue hover:underline font-mono"
-                                >
-                                  <span>{site.url}</span>
-                                  <ArrowUpRight className="w-3 h-3" />
-                                </a>
-                              </div>
+                            <p className="text-xs text-neutral-500 truncate mt-0.5">
+                              {site.description || "No description"}
+                            </p>
+                            <div className="flex items-center gap-3 mt-1 text-[11px]">
+                              <a
+                                href={site.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-apple-blue hover:underline font-mono"
+                              >
+                                <span>{site.url}</span>
+                                <ArrowUpRight className="w-3 h-3" />
+                              </a>
+                              <span className="text-neutral-400 font-mono text-[10px]">Rank #{idx + 1}</span>
                             </div>
-                          )}
+                          </div>
                         </div>
                       </div>
 
                       {/* Right: Actions */}
-                      {!isEditing && (
-                        <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-                          {/* Copy URL */}
-                          <button
-                            onClick={() => handleCopyUrl(site)}
-                            title={isCopied ? "Copied!" : "Copy URL"}
-                            className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
-                          >
-                            {isCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                          </button>
+                      <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                        {/* Copy URL */}
+                        <button
+                          onClick={() => handleCopyUrl(site)}
+                          title={isCopied ? "Copied!" : "Copy URL"}
+                          className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+                        >
+                          {isCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                        </button>
 
-                          {/* Recapture */}
-                          <button
-                            type="button"
-                            onClick={() => handleRecapture(site)}
-                            title="Re-capture fresh thumbnail"
-                            className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                          </button>
+                        {/* Recapture */}
+                        <button
+                          type="button"
+                          onClick={() => handleRecapture(site)}
+                          title="Re-capture fresh thumbnail"
+                          className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
 
-                          {/* Upload Custom Thumbnail (AFTER push) */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTargetSiteForUpload(site);
-                              siteImageInputRef.current?.click();
-                            }}
-                            title="Upload custom thumbnail image"
-                            className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-apple-blue dark:hover:text-apple-blue transition-all cursor-pointer"
-                          >
-                            <ImagePlus className="w-4 h-4 text-apple-blue" />
-                          </button>
+                        {/* Upload Custom Thumbnail (AFTER push) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTargetSiteForUpload(site);
+                            siteImageInputRef.current?.click();
+                          }}
+                          title="Upload custom thumbnail image"
+                          className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-apple-blue dark:hover:text-apple-blue transition-all cursor-pointer"
+                        >
+                          <ImagePlus className="w-4 h-4 text-apple-blue" />
+                        </button>
 
-                          {/* Edit Details */}
-                          <button
-                            onClick={() => {
-                              setEditingSiteId(site.id);
-                              setEditForm({ name: site.name, description: site.description, url: site.url });
-                            }}
-                            title="Edit metadata"
-                            className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                        {/* Full Edit & Control Console */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(site)}
+                          title="Open full control & edit console"
+                          className="p-2 rounded-xl border border-apple-blue/30 bg-apple-blue/5 hover:bg-apple-blue/15 text-apple-blue transition-all cursor-pointer"
+                        >
+                          <Edit2 className="w-4 h-4 text-apple-blue" />
+                        </button>
 
-                          {/* Toggle Visibility */}
-                          <button
-                            onClick={() => handleToggleHide(site)}
-                            title={site.hidden ? "Unhide from gallery" : "Hide from public gallery"}
-                            className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
-                          >
-                            {site.hidden ? <EyeOff className="w-4 h-4 text-amber-500" /> : <Eye className="w-4 h-4" />}
-                          </button>
+                        {/* Toggle Visibility */}
+                        <button
+                          onClick={() => handleToggleHide(site)}
+                          title={site.hidden ? "Unhide from gallery" : "Hide from public gallery"}
+                          className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+                        >
+                          {site.hidden ? <EyeOff className="w-4 h-4 text-amber-500" /> : <Eye className="w-4 h-4" />}
+                        </button>
 
-                          {/* Delete */}
-                          <button
-                            onClick={() => handleDelete(site)}
-                            title="Remove project"
-                            className="p-2 rounded-xl border border-red-500/20 hover:border-red-500/40 text-neutral-400 hover:text-red-500 transition-all cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
+                        {/* Delete */}
+                        <button
+                          onClick={() => handleDelete(site)}
+                          title="Remove project"
+                          className="p-2 rounded-xl border border-red-500/20 hover:border-red-500/40 text-neutral-400 hover:text-red-500 transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1187,6 +1352,224 @@ export function AdminDashboard() {
             </div>
           )}
         </section>
+
+        {/* Full Dedicated Site Editor Modal */}
+        {editingSite && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-xl animate-fadeIn">
+            <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-[#0d0d12] border border-white/20 text-white shadow-[0_32px_96px_-12px_rgba(0,0,0,0.95)] p-6 sm:p-8 space-y-6">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div>
+                  <span className="text-[10px] font-mono tracking-widest uppercase text-apple-blue font-semibold">
+                    SITE CONTROL CONSOLE
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5">
+                    Edit &ldquo;{editingSite.name}&rdquo;
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingSite(null)}
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer text-neutral-300 hover:text-white"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Thumbnail Preview & Management */}
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-neutral-300 tracking-wider uppercase font-mono">
+                  Project Thumbnail Snapshot
+                </label>
+                <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border-2 border-white/20 bg-black shadow-lg group">
+                  <Image
+                    src={editForm.thumbnailUrl || editForm.thumbnail800 || editForm.blurDataURL || "/captures/default-fallback.webp"}
+                    alt={editForm.name}
+                    fill
+                    unoptimized
+                    className="object-cover object-top"
+                  />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 p-4">
+                    <button
+                      type="button"
+                      onClick={() => editModalImageInputRef.current?.click()}
+                      className="px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-neutral-200 transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                    >
+                      <ImagePlus className="w-4 h-4 text-apple-blue" />
+                      <span>Upload Image</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleModalRecapture}
+                      disabled={isModalCapturing}
+                      className="px-4 py-2 rounded-xl bg-black/80 text-white text-xs font-semibold hover:bg-black border border-white/20 transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isModalCapturing ? "animate-spin" : ""}`} />
+                      <span>{isModalCapturing ? "Capturing..." : "Re-capture"}</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                  <span>16:10 aspect ratio · High-res WebP</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => editModalImageInputRef.current?.click()}
+                      className="text-apple-blue hover:underline cursor-pointer flex items-center gap-1 font-medium"
+                    >
+                      <ImagePlus className="w-3.5 h-3.5" />
+                      <span>Replace Image</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleModalRecapture}
+                      disabled={isModalCapturing}
+                      className="text-apple-blue hover:underline cursor-pointer flex items-center gap-1 font-medium"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isModalCapturing ? "animate-spin" : ""}`} />
+                      <span>Re-capture URL</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Inputs Grid */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-300 mb-1.5 font-mono">
+                    PROJECT TITLE
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full h-11 px-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                    placeholder="e.g. Nomin Code"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-300 mb-1.5 font-mono">
+                    DESCRIPTION / TAGLINE
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20 resize-none"
+                    placeholder="Short tagline or summary of the project..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-semibold text-neutral-300 font-mono">
+                        TARGET URL
+                      </label>
+                      {editForm.url && (
+                        <a
+                          href={editForm.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-apple-blue hover:underline inline-flex items-center gap-0.5 font-medium"
+                        >
+                          <span>Test Link</span>
+                          <ArrowUpRight className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                    <input
+                      type="url"
+                      value={editForm.url}
+                      onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
+                      className="w-full h-11 px-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm font-mono focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                      placeholder="https://..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-300 mb-1.5 font-mono">
+                      GALLERY ORDER RANK
+                    </label>
+                    <input
+                      type="number"
+                      value={editForm.order}
+                      onChange={(e) => setEditForm({ ...editForm, order: Number(e.target.value) || 0 })}
+                      className="w-full h-11 px-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm font-mono focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                {/* Visibility Switch */}
+                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-white">Public Visibility</p>
+                    <p className="text-[11px] text-neutral-400">
+                      {editForm.hidden
+                        ? "Hidden — This site is hidden from the public showcase."
+                        : "Public — This site is visible to everyone on the gallery."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, hidden: !editForm.hidden })}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      editForm.hidden
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                        : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                    }`}
+                  >
+                    {editForm.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{editForm.hidden ? "Hidden" : "Public"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={handleDeleteFromModal}
+                  className="px-3.5 py-2 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-950/40 border border-red-500/20 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete Site</span>
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingSite(null)}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-neutral-300 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEdit}
+                    disabled={isSavingEdit}
+                    className="px-5 py-2 rounded-xl bg-apple-blue hover:bg-[#0077ed] text-white text-xs font-semibold shadow-lg shadow-apple-blue/20 flex items-center gap-2 transition-transform active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    <span>{isSavingEdit ? "Saving Changes..." : "Save Changes"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Hidden file input for Edit Modal Thumbnail Replacement */}
+        <input
+          ref={editModalImageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleEditModalImageUpload}
+        />
 
         {/* Hidden file input for Review Snapshot (BEFORE publish) */}
         <input
