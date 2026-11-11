@@ -30,6 +30,8 @@ blob-report/
 playwright/.cache/
 *.tsbuildinfo
 next-env.d.ts
+public/captures/*test*.webp
+*.zip
 
 # Local database file
 prisma/*.db
