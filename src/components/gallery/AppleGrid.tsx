@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { VaultSite } from "@/lib/sites-store";
 import { AppleTile } from "./AppleTile";
@@ -8,7 +9,27 @@ interface AppleGridProps {
   sites: VaultSite[];
 }
 
-export function AppleGrid({ sites }: AppleGridProps) {
+export function AppleGrid({ sites: initialSites }: AppleGridProps) {
+  const [sites, setSites] = useState<VaultSite[]>(initialSites || []);
+
+  useEffect(() => {
+    if (initialSites && initialSites.length > 0) {
+      setSites(initialSites);
+      try {
+        localStorage.setItem("vault_curated_sites", JSON.stringify(initialSites));
+      } catch {}
+    } else {
+      try {
+        const raw = localStorage.getItem("vault_curated_sites");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSites(parsed.filter((s: VaultSite) => !s.hidden));
+          }
+        }
+      } catch {}
+    }
+  }, [initialSites]);
   if (!sites || sites.length === 0) {
     return (
       <section className="w-full max-w-4xl mx-auto py-16 sm:py-24 px-6 flex flex-col items-center justify-center text-center">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -23,6 +23,7 @@ import {
   Layers,
   Copy,
   Download,
+  Upload,
   Search,
   ArrowUpRight,
   CheckCircle2,
@@ -70,7 +71,31 @@ export function AdminDashboard() {
       const res = await fetch("/api/admin/sites");
       if (!res.ok) throw new Error("Failed to load sites.");
       const data = await res.json();
-      setSites(data.sites || []);
+      const serverSites = data.sites || [];
+
+      // Check localStorage for offline / multi-container resilience
+      let localSaved: SiteItem[] = [];
+      try {
+        const raw = localStorage.getItem("vault_curated_sites");
+        if (raw) localSaved = JSON.parse(raw);
+      } catch {}
+
+      if (serverSites.length > 0) {
+        setSites(serverSites);
+        try {
+          localStorage.setItem("vault_curated_sites", JSON.stringify(serverSites));
+        } catch {}
+      } else if (localSaved.length > 0) {
+        // Hydrate from localStorage and sync to current container
+        setSites(localSaved);
+        fetch("/api/admin/sites/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sites: localSaved }),
+        }).catch(() => {});
+      } else {
+        setSites([]);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -128,6 +153,17 @@ export function AdminDashboard() {
     }
   };
 
+  // Check if typed inputUrl already exists in archive
+  const inputUrlMatch = useMemo(() => {
+    if (!inputUrl || inputUrl.trim().length < 5) return null;
+    try {
+      const incomingNorm = normalizeUrl(inputUrl.trim());
+      return sites.find((s) => normalizeUrl(s.url) === incomingNorm) || null;
+    } catch {
+      return null;
+    }
+  }, [inputUrl, sites]);
+
   // Check if current capturedPreview already exists in archive
   const existingSiteMatch = useMemo(() => {
     if (!capturedPreview) return null;
@@ -150,15 +186,32 @@ export function AdminDashboard() {
       if (!res.ok) throw new Error(data.error || "Failed to save site.");
 
       const isUpdate = Boolean(existingSiteMatch);
+      const savedSite = data.site;
+
       setCapturedPreview(null);
       setInputUrl("");
       setActionNotice(
         isUpdate
-          ? `Updated "${data.site.name}" in VAULT.`
-          : `Published "${data.site.name}" to VAULT.`
+          ? `Updated "${savedSite.name}" in VAULT and refreshed search index.`
+          : `Published "${savedSite.name}" to VAULT.`
       );
       setTimeout(() => setActionNotice(null), 3500);
-      fetchSites();
+
+      // Immediately persist to local state & localStorage, replacing matched site by id or url
+      const existsIndex = sites.findIndex(
+        (s) => s.id === savedSite.id || normalizeUrl(s.url) === normalizeUrl(savedSite.url)
+      );
+      let newSites: SiteItem[];
+      if (existsIndex >= 0) {
+        newSites = [...sites];
+        newSites[existsIndex] = savedSite;
+      } else {
+        newSites = [savedSite, ...sites];
+      }
+      setSites(newSites);
+      try {
+        localStorage.setItem("vault_curated_sites", JSON.stringify(newSites));
+      } catch {}
     } catch (err: any) {
       setError(err.message);
     }
@@ -177,7 +230,7 @@ export function AdminDashboard() {
       if (!res.ok) throw new Error(data.error || "Recapture failed.");
 
       const cap = data.capture;
-      await fetch(`/api/admin/sites/${site.id}`, {
+      const updatedRes = await fetch(`/api/admin/sites/${site.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -189,9 +242,17 @@ export function AdminDashboard() {
         }),
       });
 
+      const updatedData = await updatedRes.json();
+      if (updatedData.site) {
+        const nextSites = sites.map((s) => (s.id === site.id ? updatedData.site : s));
+        setSites(nextSites);
+        try {
+          localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
+        } catch {}
+      }
+
       setActionNotice(`Updated snapshot for "${site.name}".`);
       setTimeout(() => setActionNotice(null), 3500);
-      fetchSites();
     } catch (err: any) {
       setError(err.message);
     }
@@ -200,12 +261,19 @@ export function AdminDashboard() {
   // 4. Toggle Visibility
   const handleToggleHide = async (site: SiteItem) => {
     try {
-      await fetch(`/api/admin/sites/${site.id}`, {
+      const res = await fetch(`/api/admin/sites/${site.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hidden: !site.hidden }),
       });
-      fetchSites();
+      const data = await res.json();
+      if (data.site) {
+        const nextSites = sites.map((s) => (s.id === site.id ? data.site : s));
+        setSites(nextSites);
+        try {
+          localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
+        } catch {}
+      }
     } catch (err: any) {
       setError(err.message);
     }
@@ -216,9 +284,14 @@ export function AdminDashboard() {
     if (!window.confirm(`Are you sure you want to remove "${site.name}" from VAULT?`)) return;
     try {
       await fetch(`/api/admin/sites/${site.id}`, { method: "DELETE" });
+      const nextSites = sites.filter((s) => s.id !== site.id);
+      setSites(nextSites);
+      try {
+        localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
+      } catch {}
+
       setActionNotice(`Removed "${site.name}".`);
       setTimeout(() => setActionNotice(null), 3000);
-      fetchSites();
     } catch (err: any) {
       setError(err.message);
     }
@@ -236,6 +309,9 @@ export function AdminDashboard() {
 
     const orderedIds = newSites.map((s) => s.id);
     setSites(newSites);
+    try {
+      localStorage.setItem("vault_curated_sites", JSON.stringify(newSites));
+    } catch {}
 
     try {
       await fetch("/api/admin/sites", {
@@ -252,13 +328,20 @@ export function AdminDashboard() {
   // 7. Edit details
   const handleSaveEdit = async (id: string) => {
     try {
-      await fetch(`/api/admin/sites/${id}`, {
+      const res = await fetch(`/api/admin/sites/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editForm),
       });
+      const data = await res.json();
+      if (data.site) {
+        const nextSites = sites.map((s) => (s.id === id ? data.site : s));
+        setSites(nextSites);
+        try {
+          localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
+        } catch {}
+      }
       setEditingSiteId(null);
-      fetchSites();
     } catch (err: any) {
       setError(err.message);
     }
@@ -282,6 +365,39 @@ export function AdminDashboard() {
     URL.revokeObjectURL(url);
     setActionNotice("Exported VAULT archive backup.");
     setTimeout(() => setActionNotice(null), 3000);
+  };
+
+  // 10. Restore archive backup JSON
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed)) {
+        throw new Error("Invalid backup file. Expected a JSON array of sites.");
+      }
+
+      setSites(parsed);
+      try {
+        localStorage.setItem("vault_curated_sites", JSON.stringify(parsed));
+      } catch {}
+
+      await fetch("/api/admin/sites/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sites: parsed }),
+      });
+
+      setActionNotice(`Successfully restored ${parsed.length} projects from backup.`);
+      setTimeout(() => setActionNotice(null), 3500);
+    } catch (err: any) {
+      setError(`Failed to restore backup: ${err.message}`);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const liveSitesCount = sites.filter((s) => !s.hidden).length;
@@ -331,6 +447,23 @@ export function AdminDashboard() {
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Backup</span>
             </button>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              title="Restore archive from JSON backup"
+              className="text-xs font-medium text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Restore</span>
+            </button>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="application/json"
+              onChange={handleImportBackup}
+              className="hidden"
+            />
 
             <Link
               href="/"
@@ -416,7 +549,7 @@ export function AdminDashboard() {
               Capture & Add Project by URL
             </h2>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2 font-normal leading-relaxed">
-              Enter any public web deployment URL. The serverless capture engine loads the site in headless Chromium, waits 5 seconds for typography, videos, and entrance animations to settle, renders a 1440×900 WebP thumbnail, and indexes it into your gallery.
+              Enter any public web deployment URL or GitHub repository URL. The serverless capture engine analyzes live sites or Git repositories, extracts metadata, renders a 1440×900 WebP thumbnail, and indexes it into your gallery.
             </p>
           </div>
 
@@ -426,7 +559,7 @@ export function AdminDashboard() {
                 type="url"
                 value={inputUrl}
                 onChange={(e) => setInputUrl(e.target.value)}
-                placeholder="https://my-awesome-website.vercel.app"
+                placeholder="https://my-deployment.vercel.app or https://github.com/user/repo"
                 required
                 disabled={isCapturing}
                 className="w-full h-14 px-5 rounded-2xl bg-neutral-100 dark:bg-[#15151b] border-2 border-black/10 dark:border-white/15 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-[#0071e3] dark:focus:border-[#2997ff] focus:ring-4 focus:ring-[#0071e3]/20 transition-all font-mono shadow-inner"
@@ -452,6 +585,29 @@ export function AdminDashboard() {
             </button>
           </form>
 
+          {inputUrlMatch && (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-300 animate-fadeIn">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <div>
+                  <span className="font-semibold text-emerald-950 dark:text-emerald-100">
+                    Already in VAULT · Up to Date:
+                  </span>{" "}
+                  <span>
+                    &ldquo;{inputUrlMatch.name}&rdquo; is already indexed. No need to update — you&apos;re completely up to date!
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSearchQuery(inputUrlMatch.name)}
+                className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 font-semibold transition-colors text-emerald-950 dark:text-emerald-100 shrink-0"
+              >
+                Find in Search
+              </button>
+            </div>
+          )}
+
           {isCapturing && captureStatus && (
             <div className="p-4 rounded-2xl bg-blue-500/10 border-2 border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs font-medium flex items-center gap-3 animate-fadeIn">
               <Loader2 className="w-4 h-4 animate-spin text-blue-500 shrink-0" />
@@ -468,8 +624,9 @@ export function AdminDashboard() {
                   <span>Review Captured Snapshot</span>
                 </h3>
                 {existingSiteMatch ? (
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium">
-                    Existing Site (Will Update)
+                  <span className="text-xs px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500/30 font-semibold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Already in VAULT · Up to Date</span>
                   </span>
                 ) : (
                   <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
@@ -479,8 +636,30 @@ export function AdminDashboard() {
               </div>
 
               {existingSiteMatch && (
-                <div className="py-2 px-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300">
-                  This deployment is already in your gallery. Publishing will refresh its screenshot and details.
+                <div className="p-4 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-300">
+                  <div className="flex items-start sm:items-center gap-2.5">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5 sm:mt-0" />
+                    <div>
+                      <p className="font-semibold text-emerald-950 dark:text-emerald-100">
+                        Already in VAULT · You are completely up to date!
+                      </p>
+                      <p className="text-emerald-800/90 dark:text-emerald-300/80 mt-0.5">
+                        This site is already indexed in your gallery as <strong>&ldquo;{existingSiteMatch.name}&rdquo;</strong>. No update is needed unless you wish to overwrite the snapshot or metadata.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCapturedPreview(null);
+                      setInputUrl("");
+                      setActionNotice(`&ldquo;${existingSiteMatch.name}&rdquo; is already up to date in VAULT.`);
+                      setTimeout(() => setActionNotice(null), 3500);
+                    }}
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-950 dark:text-emerald-100 font-semibold transition-colors shrink-0"
+                  >
+                    Keep Existing (Cancel)
+                  </button>
                 </div>
               )}
 
@@ -525,18 +704,19 @@ export function AdminDashboard() {
                     />
                   </div>
 
-                  <div className="flex items-center gap-3 pt-2">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
                     <button
                       onClick={handleConfirmAddSite}
-                      className="px-6 py-2.5 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold cursor-pointer shadow-md transition-all active:scale-98"
+                      className="px-6 py-2.5 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold cursor-pointer shadow-md transition-all active:scale-98 flex items-center gap-2"
                     >
-                      {existingSiteMatch ? "Update Site in VAULT" : "Publish to VAULT"}
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>{existingSiteMatch ? "Update / Overwrite in VAULT" : "Publish to VAULT"}</span>
                     </button>
                     <button
                       onClick={() => setCapturedPreview(null)}
                       className="px-5 py-2.5 rounded-xl bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-medium hover:bg-neutral-300 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
                     >
-                      Discard
+                      Dismiss
                     </button>
                   </div>
                 </div>

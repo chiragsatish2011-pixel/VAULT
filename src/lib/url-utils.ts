@@ -3,9 +3,21 @@
  */
 export function normalizeUrl(urlStr: string): string {
   try {
-    const parsed = new URL(urlStr.trim());
-    return `${parsed.hostname}${parsed.pathname.replace(/\/+$/, "")}`.toLowerCase();
+    let clean = urlStr.trim();
+    if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
+      clean = "https://" + clean;
+    }
+    const parsed = new URL(clean);
+    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    const pathname = parsed.pathname.replace(/\/+$/, "").replace(/\.git$/i, "").toLowerCase();
+    return `${host}${pathname}`;
   } catch {
-    return urlStr.trim().toLowerCase().replace(/\/+$/, "");
+    return urlStr
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//i, "")
+      .replace(/^www\./i, "")
+      .replace(/\.git$/i, "")
+      .replace(/\/+$/, "");
   }
 }

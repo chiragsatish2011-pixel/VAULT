@@ -2,6 +2,9 @@ import { Redis } from "@upstash/redis";
 import fs from "fs";
 import path from "path";
 import { FALLBACK_PROJECTS } from "./fallback-projects";
+import { normalizeUrl } from "./url-utils";
+
+export { normalizeUrl };
 
 export interface SiteItem {
   id: string;
@@ -25,7 +28,7 @@ const REDIS_SITES_KEY = "vault:sites:list";
 const LOCAL_CACHE_PATH = path.join(process.cwd(), "public", "sites-cache.json");
 const TMP_CACHE_PATH = path.join("/tmp", "vault-sites-cache.json");
 
-// In-memory global singleton for persistent serverless container lifetimes
+// In-memory global singleton for serverless container lifetimes
 declare global {
   // eslint-disable-next-line no-var
   var __vault_memory_sites: SiteItem[] | undefined;
@@ -45,23 +48,42 @@ function getRedisClient(): Redis | null {
 }
 
 /**
- * Convert initial seed data into SiteItem format
+ * Read from Vercel Blob if BLOB_READ_WRITE_TOKEN is configured
  */
-export function getInitialSeedSites(): SiteItem[] {
-  return FALLBACK_PROJECTS.map((proj, idx) => ({
-    id: proj.id || `site-${proj.slug}`,
-    name: proj.title,
-    url: proj.liveUrl,
-    description: proj.tagline || proj.description || "",
-    thumbnailUrl: `/captures/${proj.slug}.webp`,
-    thumbnail800: `/captures/${proj.slug}.webp`,
-    thumbnail400: `/captures/${proj.slug}.webp`,
-    blurDataURL: "data:image/webp;base64,UklGRmYAAABXRUJQVlA4TFkAAAAvAAAAEEYQkP7//3+D78C8QETk/2tPkWx727aVpK0k7f+tOAEQ/f83eJ53x5k5iIj8nwF3vPv1/z/vjve43x1n5iAi0v9t21aStpK0tb937xIRkf9vAEQ/f39/f39/f39/f38=",
-    order: idx,
-    hidden: proj.visibility === "draft",
-    createdAt: proj.createdAt || new Date().toISOString(),
-    updatedAt: proj.updatedAt || new Date().toISOString(),
-  }));
+async function readVercelBlobSites(): Promise<SiteItem[] | null> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  try {
+    const { list } = await import("@vercel/blob");
+    const { blobs } = await list({ prefix: "vault-data/sites.json" });
+    if (blobs.length > 0) {
+      const res = await fetch(blobs[0].url, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) return data;
+      }
+    }
+  } catch (err: any) {
+    console.warn("Vercel Blob read error:", err.message);
+  }
+  return null;
+}
+
+/**
+ * Write to Vercel Blob if BLOB_READ_WRITE_TOKEN is configured
+ */
+async function writeVercelBlobSites(sites: SiteItem[]): Promise<boolean> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return false;
+  try {
+    const { put } = await import("@vercel/blob");
+    await put("vault-data/sites.json", JSON.stringify(sites, null, 2), {
+      access: "public",
+      addRandomSuffix: false,
+    });
+    return true;
+  } catch (err: any) {
+    console.warn("Vercel Blob write error:", err.message);
+    return false;
+  }
 }
 
 /**
@@ -134,6 +156,7 @@ function writeLocalCache(sites: SiteItem[]): void {
 export async function getAllSites(includeHidden: boolean = false): Promise<SiteItem[]> {
   const redis = getRedisClient();
 
+  // 1. Upstash Redis Tier
   if (redis) {
     try {
       const sites = await redis.get<SiteItem[]>(REDIS_SITES_KEY);
@@ -143,11 +166,19 @@ export async function getAllSites(includeHidden: boolean = false): Promise<SiteI
         return filtered.sort((a, b) => a.order - b.order);
       }
     } catch (err) {
-      console.warn("Redis fetch failed, falling back to local multi-tier cache:", err);
+      console.warn("Redis fetch failed, falling back to next tier:", err);
     }
   }
 
-  // Fallback to local multi-tier cache
+  // 2. Vercel Blob Tier
+  const blobSites = await readVercelBlobSites();
+  if (blobSites) {
+    globalThis.__vault_memory_sites = blobSites;
+    const filtered = includeHidden ? blobSites : blobSites.filter((s) => !s.hidden);
+    return filtered.sort((a, b) => a.order - b.order);
+  }
+
+  // 3. Local Multi-tier Cache (/tmp + in-memory + file)
   const localSites = readLocalCache();
   const filtered = includeHidden ? localSites : localSites.filter((s) => !s.hidden);
   return filtered.sort((a, b) => a.order - b.order);
@@ -161,8 +192,30 @@ export async function getSiteById(id: string): Promise<SiteItem | null> {
   return sites.find((s) => s.id === id) || null;
 }
 
-import { normalizeUrl } from "./url-utils";
-export { normalizeUrl };
+/**
+ * Replace all sites atomically (used by sync & reorder)
+ */
+export async function saveAllSites(updatedSites: SiteItem[]): Promise<SiteItem[]> {
+  const sorted = [...updatedSites].sort((a, b) => a.order - b.order);
+
+  // Write to Redis
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      await redis.set(REDIS_SITES_KEY, sorted);
+    } catch (err) {
+      console.error("Failed to save sites to Redis:", err);
+    }
+  }
+
+  // Write to Vercel Blob
+  await writeVercelBlobSites(sorted);
+
+  // Write to multi-tier cache
+  writeLocalCache(sorted);
+
+  return sorted;
+}
 
 /**
  * Save / Create a new site (with smart duplicate update detection)
@@ -201,16 +254,7 @@ export async function createSite(siteData: Omit<SiteItem, "id" | "createdAt" | "
     updatedSites = [...sites, resultingSite].sort((a, b) => a.order - b.order);
   }
 
-  const redis = getRedisClient();
-  if (redis) {
-    try {
-      await redis.set(REDIS_SITES_KEY, updatedSites);
-    } catch (err) {
-      console.error("Failed to save site to Redis:", err);
-    }
-  }
-
-  writeLocalCache(updatedSites);
+  await saveAllSites(updatedSites);
   return resultingSite;
 }
 
@@ -230,18 +274,7 @@ export async function updateSite(id: string, updates: Partial<SiteItem>): Promis
   };
 
   sites[index] = updatedItem;
-  const sorted = sites.sort((a, b) => a.order - b.order);
-
-  const redis = getRedisClient();
-  if (redis) {
-    try {
-      await redis.set(REDIS_SITES_KEY, sorted);
-    } catch (err) {
-      console.error("Failed to update site in Redis:", err);
-    }
-  }
-
-  writeLocalCache(sorted);
+  await saveAllSites(sites);
   return updatedItem;
 }
 
@@ -253,16 +286,7 @@ export async function deleteSite(id: string): Promise<boolean> {
   const filtered = sites.filter((s) => s.id !== id);
   if (filtered.length === sites.length) return false;
 
-  const redis = getRedisClient();
-  if (redis) {
-    try {
-      await redis.set(REDIS_SITES_KEY, filtered);
-    } catch (err) {
-      console.error("Failed to delete site from Redis:", err);
-    }
-  }
-
-  writeLocalCache(filtered);
+  await saveAllSites(filtered);
   return true;
 }
 
@@ -282,20 +306,10 @@ export async function reorderSites(orderedIds: string[]): Promise<SiteItem[]> {
     }
   });
 
-  // Append any sites not included in orderedIds to preserve data
   siteMap.forEach((item) => {
     reordered.push({ ...item, order: reordered.length, updatedAt: new Date().toISOString() });
   });
 
-  const redis = getRedisClient();
-  if (redis) {
-    try {
-      await redis.set(REDIS_SITES_KEY, reordered);
-    } catch (err) {
-      console.error("Failed to reorder sites in Redis:", err);
-    }
-  }
-
-  writeLocalCache(reordered);
+  await saveAllSites(reordered);
   return reordered;
 }

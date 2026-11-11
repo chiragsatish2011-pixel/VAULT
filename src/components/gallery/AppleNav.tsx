@@ -9,6 +9,21 @@ interface AppleNavProps {
 
 export function AppleNav({ totalCount }: AppleNavProps) {
   const [scrolledPastHero, setScrolledPastHero] = useState(false);
+  const [count, setCount] = useState(totalCount);
+
+  useEffect(() => {
+    if (totalCount > 0) {
+      setCount(totalCount);
+    } else {
+      try {
+        const raw = localStorage.getItem("vault_curated_sites");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setCount(parsed.filter((s: any) => !s.hidden).length);
+        }
+      } catch {}
+    }
+  }, [totalCount]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -46,7 +61,7 @@ export function AppleNav({ totalCount }: AppleNavProps) {
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
             <span className="font-mono text-[11px] font-medium text-black/80 dark:text-white/80">
-              {totalCount} Works
+              {count} Works
             </span>
           </div>
 

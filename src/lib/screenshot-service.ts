@@ -190,128 +190,194 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
     description: "",
     favicon: null as string | null,
   };
+  let isGitHubRepo = false;
 
   try {
-    // Attempt 1: Headless Chromium via Puppeteer
-    try {
-      browser = await getBrowser();
-      const page = await browser.newPage();
+    // Dedicated Fast-path for GitHub Repositories (supports Git alone or web URL)
+    const gitHubMatch = validUrl.match(
+      /^https?:\/\/(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+?)(?:\/.*)?$/i
+    );
 
-      await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
-      page.on("dialog", async (dialog: any) => {
-        try {
-          await dialog.dismiss();
-        } catch {}
-      });
-
-      await page.goto(validUrl, {
-        waitUntil: "networkidle2",
-        timeout: 20000,
-      });
-
-      // 5-second settle wait per brief requirements
-      await sleep(5000);
-
-      // Attempt cookie banner dismissal
-      try {
-        await page.evaluate(() => {
-          const selectors = [
-            'button[id*="cookie" i]',
-            'button[class*="cookie" i]',
-            'button[id*="consent" i]',
-            'button[class*="consent" i]',
-            'button[id*="accept" i]',
-            'button[aria-label*="accept" i]',
-            'button[aria-label*="agree" i]',
-            '#onetrust-accept-btn-handler',
-          ];
-          for (const s of selectors) {
-            const el = document.querySelector(s) as HTMLElement;
-            if (el && typeof el.click === "function") {
-              el.click();
-              break;
-            }
-          }
-        });
-        await sleep(500);
-      } catch {}
-
-      const pageMeta = await page.evaluate(() => {
-        const title = document.title || "";
-        const descEl =
-          document.querySelector('meta[name="description"]') ||
-          document.querySelector('meta[property="og:description"]');
-        const description = descEl ? descEl.getAttribute("content") || "" : "";
-
-        const iconEl =
-          document.querySelector('link[rel="icon"]') ||
-          document.querySelector('link[rel="shortcut icon"]') ||
-          document.querySelector('link[rel="apple-touch-icon"]');
-        const favicon = iconEl ? iconEl.getAttribute("href") : "/favicon.ico";
-
-        return { title, description, favicon };
-      });
-
-      meta = pageMeta;
-      rawBuffer = (await page.screenshot({
-        type: "png",
-        fullPage: false,
-      })) as Buffer;
-
-      await browser.close();
-      browser = null;
-    } catch (browserErr: any) {
-      console.warn("Headless Chromium unavailable, engaging high-resolution web render fallback:", browserErr.message);
-
-      // Fallback: Fetch real HTML metadata directly
-      try {
-        const htmlRes = await fetch(validUrl, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          },
-          signal: AbortSignal.timeout(8000),
-        });
-        const html = await htmlRes.text();
-        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        const descMatch =
-          html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
-          html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
-        if (titleMatch) meta.title = titleMatch[1].trim();
-        if (descMatch) meta.description = descMatch[1].trim();
-
-        const iconMatch =
-          html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i) ||
-          html.match(/<link[^>]*rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i);
-        if (iconMatch) meta.favicon = iconMatch[1].trim();
-      } catch (metaErr: any) {
-        console.warn("HTML metadata fetch fallback error:", metaErr.message);
-      }
-
-      // Fallback: Fetch screenshot from resilient render services
-      const fallbackCaptureUrls = [
-        `https://image.thum.io/get/width/1440/crop/900/noanimate/${validUrl}`,
-        `https://api.microlink.io/?url=${encodeURIComponent(validUrl)}&screenshot=true&embed=screenshot.url`,
-        `https://s0.wp.com/mshots/v1/${encodeURIComponent(validUrl)}?w=1440&h=900`,
+    if (gitHubMatch) {
+      const owner = gitHubMatch[1];
+      const repo = gitHubMatch[2].replace(/\.git$/, "");
+      const reservedPaths = [
+        "features", "pricing", "login", "join", "topics", "collections",
+        "trending", "explore", "settings", "organizations", "about", "contact"
       ];
 
-      for (const fUrl of fallbackCaptureUrls) {
+      if (!reservedPaths.includes(owner.toLowerCase()) && !reservedPaths.includes(repo.toLowerCase())) {
         try {
-          const res = await fetch(fUrl, { signal: AbortSignal.timeout(15000) });
-          if (res.ok) {
-            const arrayBuf = await res.arrayBuffer();
-            if (arrayBuf.byteLength > 1000) {
-              rawBuffer = Buffer.from(arrayBuf);
-              break;
+          let ghTitle = `${owner}/${repo}`;
+          let ghDesc = "";
+
+          try {
+            const ghApiRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+              headers: {
+                "User-Agent": "Vault-Agent/1.0",
+                Accept: "application/vnd.github.v3+json",
+                ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
+              },
+              signal: AbortSignal.timeout(6000),
+            });
+
+            if (ghApiRes.ok) {
+              const ghData = await ghApiRes.json();
+              ghTitle = ghData.name
+                ? ghData.name.split(/[-_]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+                : repo;
+              ghDesc = ghData.description || `Open source project by ${owner}`;
+            }
+          } catch (e: any) {
+            console.warn("GitHub API metadata lookup error:", e.message);
+          }
+
+          // Fetch official GitHub OpenGraph social preview image
+          const ogRes = await fetch(`https://opengraph.githubassets.com/1/${owner}/${repo}`, {
+            headers: { "User-Agent": "Vault-Agent/1.0" },
+            signal: AbortSignal.timeout(8000),
+          });
+
+          if (ogRes.ok) {
+            const ogBuffer = Buffer.from(await ogRes.arrayBuffer());
+            if (ogBuffer.byteLength > 1000) {
+              rawBuffer = ogBuffer;
+              meta = {
+                title: ghTitle,
+                description: ghDesc,
+                favicon: "https://github.githubassets.com/favicons/favicon.svg",
+              };
+              isGitHubRepo = true;
             }
           }
-        } catch (fetchErr: any) {
-          console.warn(`Fallback render service ${fUrl.slice(0, 35)} failed:`, fetchErr.message);
+        } catch (ghErr: any) {
+          console.warn("GitHub direct OG preview failed, proceeding to web render:", ghErr.message);
         }
       }
+    }
 
-      if (!rawBuffer) {
-        throw new Error("Unable to capture site screenshot with both Chromium and serverless render services.");
+    // Attempt 1: Headless Chromium via Puppeteer (if not already captured via GitHub OG)
+    if (!rawBuffer) {
+      try {
+        browser = await getBrowser();
+        const page = await browser.newPage();
+
+        await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+        page.on("dialog", async (dialog: any) => {
+          try {
+            await dialog.dismiss();
+          } catch {}
+        });
+
+        await page.goto(validUrl, {
+          waitUntil: "networkidle2",
+          timeout: 20000,
+        });
+
+        // 5-second settle wait per brief requirements
+        await sleep(5000);
+
+        // Attempt cookie banner dismissal
+        try {
+          await page.evaluate(() => {
+            const selectors = [
+              'button[id*="cookie" i]',
+              'button[class*="cookie" i]',
+              'button[id*="consent" i]',
+              'button[class*="consent" i]',
+              'button[id*="accept" i]',
+              'button[aria-label*="accept" i]',
+              'button[aria-label*="agree" i]',
+              '#onetrust-accept-btn-handler',
+            ];
+            for (const s of selectors) {
+              const el = document.querySelector(s) as HTMLElement;
+              if (el && typeof el.click === "function") {
+                el.click();
+                break;
+              }
+            }
+          });
+          await sleep(500);
+        } catch {}
+
+        const pageMeta = await page.evaluate(() => {
+          const title = document.title || "";
+          const descEl =
+            document.querySelector('meta[name="description"]') ||
+            document.querySelector('meta[property="og:description"]');
+          const description = descEl ? descEl.getAttribute("content") || "" : "";
+
+          const iconEl =
+            document.querySelector('link[rel="icon"]') ||
+            document.querySelector('link[rel="shortcut icon"]') ||
+            document.querySelector('link[rel="apple-touch-icon"]');
+          const favicon = iconEl ? iconEl.getAttribute("href") : "/favicon.ico";
+
+          return { title, description, favicon };
+        });
+
+        meta = pageMeta;
+        rawBuffer = (await page.screenshot({
+          type: "png",
+          fullPage: false,
+        })) as Buffer;
+
+        await browser.close();
+        browser = null;
+      } catch (browserErr: any) {
+        console.warn("Headless Chromium unavailable, engaging high-resolution web render fallback:", browserErr.message);
+
+        // Fallback: Fetch real HTML metadata directly
+        try {
+          const htmlRes = await fetch(validUrl, {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            },
+            signal: AbortSignal.timeout(8000),
+          });
+          const html = await htmlRes.text();
+          const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          const descMatch =
+            html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+            html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+          if (titleMatch) meta.title = titleMatch[1].trim();
+          if (descMatch) meta.description = descMatch[1].trim();
+
+          const iconMatch =
+            html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i) ||
+            html.match(/<link[^>]*rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i);
+          if (iconMatch) meta.favicon = iconMatch[1].trim();
+        } catch (metaErr: any) {
+          console.warn("HTML metadata fetch fallback error:", metaErr.message);
+        }
+
+        // Fallback: Fetch screenshot from resilient render services
+        const fallbackCaptureUrls = [
+          `https://image.thum.io/get/width/1440/crop/900/noanimate/${validUrl}`,
+          `https://api.microlink.io/?url=${encodeURIComponent(validUrl)}&screenshot=true&embed=screenshot.url`,
+          `https://s0.wp.com/mshots/v1/${encodeURIComponent(validUrl)}?w=1440&h=900`,
+        ];
+
+        for (const fUrl of fallbackCaptureUrls) {
+          try {
+            const res = await fetch(fUrl, { signal: AbortSignal.timeout(15000) });
+            if (res.ok) {
+              const arrayBuf = await res.arrayBuffer();
+              if (arrayBuf.byteLength > 1000) {
+                rawBuffer = Buffer.from(arrayBuf);
+                break;
+              }
+            }
+          } catch (fetchErr: any) {
+            console.warn(`Fallback render service ${fUrl.slice(0, 35)} failed:`, fetchErr.message);
+          }
+        }
+
+        if (!rawBuffer) {
+          throw new Error("Unable to capture site screenshot with both Chromium and serverless render services.");
+        }
       }
     }
 
@@ -324,19 +390,21 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
       }
     }
 
+    const imagePosition = isGitHubRepo ? "center" : "top";
+
     // 7. Process with Sharp: Generate 1440w, 800w, 400w WebP + Base64 Blur Placeholder
     const webp1440 = await sharp(rawBuffer)
-      .resize(1440, 900, { fit: "cover", position: "top" })
+      .resize(1440, 900, { fit: "cover", position: imagePosition })
       .webp({ quality: 80 })
       .toBuffer();
 
     const webp800 = await sharp(rawBuffer)
-      .resize(800, 500, { fit: "cover", position: "top" })
+      .resize(800, 500, { fit: "cover", position: imagePosition })
       .webp({ quality: 78 })
       .toBuffer();
 
     const webp400 = await sharp(rawBuffer)
-      .resize(400, 250, { fit: "cover", position: "top" })
+      .resize(400, 250, { fit: "cover", position: imagePosition })
       .webp({ quality: 75 })
       .toBuffer();
 

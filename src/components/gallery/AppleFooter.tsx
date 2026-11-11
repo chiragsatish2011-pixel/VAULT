@@ -1,11 +1,28 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 interface AppleFooterProps {
   totalCount: number;
 }
 
 export function AppleFooter({ totalCount }: AppleFooterProps) {
   const currentYear = new Date().getFullYear();
+  const [count, setCount] = useState(totalCount);
+
+  useEffect(() => {
+    if (totalCount > 0) {
+      setCount(totalCount);
+    } else {
+      try {
+        const raw = localStorage.getItem("vault_curated_sites");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setCount(parsed.filter((s: any) => !s.hidden).length);
+        }
+      } catch {}
+    }
+  }, [totalCount]);
 
   return (
     <footer className="w-full bg-[#fbfbfd] dark:bg-[#000000] text-black/60 dark:text-white/60 text-[12px] sm:text-[13px] border-t border-black/[0.08] dark:border-white/[0.08] py-14 sm:py-20 px-6 sm:px-10 transition-colors">
@@ -15,7 +32,7 @@ export function AppleFooter({ totalCount }: AppleFooterProps) {
           <span className="hidden sm:inline text-black/30 dark:text-white/30">•</span>
           <span>Designed & built by Chirag S.</span>
           <span className="hidden sm:inline text-black/30 dark:text-white/30">•</span>
-          <span>{totalCount} projects archived</span>
+          <span>{count} projects archived</span>
         </div>
 
         <div className="flex items-center gap-6">
