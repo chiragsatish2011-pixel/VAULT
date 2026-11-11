@@ -43,7 +43,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem("vault_theme");
+                  var isDark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+                  if (isDark) {
+                    document.documentElement.classList.add("dark");
+                  } else {
+                    document.documentElement.classList.remove("dark");
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-[#fbfbfd] dark:bg-[#000000] text-black dark:text-white transition-colors antialiased selection:bg-[#0071e3] selection:text-white dark:selection:bg-[#2997ff] dark:selection:text-black">
         <SmoothScrollProvider>{children}</SmoothScrollProvider>
       </body>

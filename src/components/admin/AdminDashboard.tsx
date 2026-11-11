@@ -34,6 +34,7 @@ import {
 import type { SiteItem } from "@/lib/sites-store";
 import { INITIAL_VAULT_SITES } from "@/lib/initial-sites";
 import { normalizeUrl } from "@/lib/url-utils";
+import { ThemeToggle } from "@/components/gallery/ThemeToggle";
 
 export function AdminDashboard() {
   const [sites, setSites] = useState<SiteItem[]>([]);
@@ -810,6 +811,8 @@ export function AdminDashboard() {
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
 
+            <ThemeToggle />
+
             <button
               onClick={handleLogout}
               className="px-3.5 py-1.5 rounded-full border border-black/10 dark:border-white/15 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:border-black/30 dark:hover:border-white/30 flex items-center gap-1.5 transition-all cursor-pointer"
@@ -879,13 +882,13 @@ export function AdminDashboard() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0071e3]/10 dark:bg-[#2997ff]/10 border border-[#0071e3]/20 dark:border-[#2997ff]/20 text-[#0071e3] dark:text-[#2997ff] text-xs font-mono uppercase tracking-wider mb-3">
               <Camera className="w-3.5 h-3.5" />
-              <span>Automated Headless Capture</span>
+              <span>Capture & Add</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-neutral-950 dark:text-white">
-              Capture & Add Project by URL
+              Add Project by URL
             </h2>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2 font-normal leading-relaxed">
-              Enter any public web deployment URL or GitHub repository URL. The serverless capture engine analyzes live sites or Git repositories, extracts metadata, renders a 1440×900 WebP thumbnail, and indexes it into your gallery.
+              Enter any public web deployment URL or GitHub repository URL. The capture engine loads the site, captures a high-resolution thumbnail, and publishes it to your showcase.
             </p>
           </div>
 
@@ -1146,10 +1149,10 @@ export function AdminDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl sm:text-2xl font-semibold tracking-[-0.03em] text-neutral-950 dark:text-white">
-                Archived Sites ({sites.length})
+                Projects ({sites.length})
               </h2>
               <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                Drag or reorder cards, edit metadata, refresh screenshots, or toggle live status.
+                Reorder cards, edit metadata, update thumbnails, or toggle live status.
               </p>
             </div>
 
@@ -1161,7 +1164,7 @@ export function AdminDashboard() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Filter sites..."
+                  placeholder="Filter projects..."
                   className="w-full h-9 pl-9 pr-3 rounded-xl bg-neutral-100 dark:bg-[#121216] border border-black/10 dark:border-white/15 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-apple-blue"
                 />
               </div>
@@ -1171,7 +1174,7 @@ export function AdminDashboard() {
           {loading ? (
             <div className="py-24 flex flex-col justify-center items-center gap-3">
               <Loader2 className="w-7 h-7 animate-spin text-apple-blue" />
-              <span className="text-xs text-neutral-500">Loading archive...</span>
+              <span className="text-xs text-neutral-500">Loading projects...</span>
             </div>
           ) : sites.length === 0 ? (
             <div className="p-16 text-center rounded-3xl border-2 border-dashed border-black/15 dark:border-white/20 bg-black/[0.01] dark:bg-white/[0.01]">
@@ -1179,7 +1182,7 @@ export function AdminDashboard() {
                 <Layers className="w-6 h-6" />
               </div>
               <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-1">
-                No Sites in VAULT
+                No Projects in VAULT
               </h3>
               <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
                 Paste any live URL into the capture field above to screenshot and index your first project.
@@ -1187,7 +1190,7 @@ export function AdminDashboard() {
             </div>
           ) : filteredSites.length === 0 ? (
             <div className="py-12 text-center text-sm text-neutral-500">
-              No archived sites matched &quot;{searchQuery}&quot;.
+              No projects matched &quot;{searchQuery}&quot;.
             </div>
           ) : (
             <div className="space-y-4">
@@ -1355,22 +1358,22 @@ export function AdminDashboard() {
 
         {/* Full Dedicated Site Editor Modal */}
         {editingSite && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-xl animate-fadeIn">
-            <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-[#0d0d12] border border-white/20 text-white shadow-[0_32px_96px_-12px_rgba(0,0,0,0.95)] p-6 sm:p-8 space-y-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 dark:bg-black/80 backdrop-blur-xl animate-fadeIn">
+            <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#0d0d12] border-2 border-black/10 dark:border-white/20 text-neutral-900 dark:text-white shadow-2xl dark:shadow-[0_32px_96px_-12px_rgba(0,0,0,0.95)] p-6 sm:p-8 space-y-6">
               {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-4">
                 <div>
                   <span className="text-[10px] font-mono tracking-widest uppercase text-apple-blue font-semibold">
-                    SITE CONTROL CONSOLE
+                    Project Editor
                   </span>
-                  <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5">
+                  <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-950 dark:text-white mt-0.5">
                     Edit &ldquo;{editingSite.name}&rdquo;
                   </h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setEditingSite(null)}
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer text-neutral-300 hover:text-white"
+                  className="w-9 h-9 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer text-neutral-600 hover:text-black dark:text-neutral-300 dark:hover:text-white"
                   title="Close"
                 >
                   <X className="w-5 h-5" />
@@ -1379,10 +1382,10 @@ export function AdminDashboard() {
 
               {/* Thumbnail Preview & Management */}
               <div className="space-y-3">
-                <label className="text-xs font-semibold text-neutral-300 tracking-wider uppercase font-mono">
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 tracking-wider uppercase font-mono">
                   Project Thumbnail Snapshot
                 </label>
-                <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border-2 border-white/20 bg-black shadow-lg group">
+                <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border-2 border-black/10 dark:border-white/20 bg-neutral-100 dark:bg-black shadow-lg group">
                   <Image
                     src={editForm.thumbnailUrl || editForm.thumbnail800 || editForm.blurDataURL || "/captures/default-fallback.webp"}
                     alt={editForm.name}
@@ -1410,7 +1413,7 @@ export function AdminDashboard() {
                     </button>
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
                   <span>16:10 aspect ratio · High-res WebP</span>
                   <div className="flex items-center gap-3">
                     <button
@@ -1437,27 +1440,27 @@ export function AdminDashboard() {
               {/* Inputs Grid */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-300 mb-1.5 font-mono">
+                  <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 font-mono">
                     PROJECT TITLE
                   </label>
                   <input
                     type="text"
                     value={editForm.name}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full h-11 px-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                    className="w-full h-11 px-3.5 rounded-xl bg-black/[0.03] dark:bg-white/5 border border-black/15 dark:border-white/15 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
                     placeholder="e.g. Nomin Code"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-300 mb-1.5 font-mono">
+                  <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 font-mono">
                     DESCRIPTION / TAGLINE
                   </label>
                   <textarea
                     rows={3}
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20 resize-none"
+                    className="w-full p-3 rounded-xl bg-black/[0.03] dark:bg-white/5 border border-black/15 dark:border-white/15 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20 resize-none"
                     placeholder="Short tagline or summary of the project..."
                   />
                 </div>
@@ -1465,7 +1468,7 @@ export function AdminDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-semibold text-neutral-300 font-mono">
+                      <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 font-mono">
                         TARGET URL
                       </label>
                       {editForm.url && (
@@ -1484,30 +1487,30 @@ export function AdminDashboard() {
                       type="url"
                       value={editForm.url}
                       onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
-                      className="w-full h-11 px-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm font-mono focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                      className="w-full h-11 px-3.5 rounded-xl bg-black/[0.03] dark:bg-white/5 border border-black/15 dark:border-white/15 text-neutral-900 dark:text-white text-sm font-mono focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
                       placeholder="https://..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-300 mb-1.5 font-mono">
+                    <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 font-mono">
                       GALLERY ORDER RANK
                     </label>
                     <input
                       type="number"
                       value={editForm.order}
                       onChange={(e) => setEditForm({ ...editForm, order: Number(e.target.value) || 0 })}
-                      className="w-full h-11 px-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm font-mono focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                      className="w-full h-11 px-3.5 rounded-xl bg-black/[0.03] dark:bg-white/5 border border-black/15 dark:border-white/15 text-neutral-900 dark:text-white text-sm font-mono focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
                       placeholder="0"
                     />
                   </div>
                 </div>
 
                 {/* Visibility Switch */}
-                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold text-white">Public Visibility</p>
-                    <p className="text-[11px] text-neutral-400">
+                    <p className="text-xs font-semibold text-neutral-900 dark:text-white">Public Visibility</p>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
                       {editForm.hidden
                         ? "Hidden — This site is hidden from the public showcase."
                         : "Public — This site is visible to everyone on the gallery."}
@@ -1518,8 +1521,8 @@ export function AdminDashboard() {
                     onClick={() => setEditForm({ ...editForm, hidden: !editForm.hidden })}
                     className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                       editForm.hidden
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                        : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30"
+                        : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30"
                     }`}
                   >
                     {editForm.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -1529,11 +1532,11 @@ export function AdminDashboard() {
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+              <div className="flex items-center justify-between pt-4 border-t border-black/10 dark:border-white/10">
                 <button
                   type="button"
                   onClick={handleDeleteFromModal}
-                  className="px-3.5 py-2 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-950/40 border border-red-500/20 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/40 border border-red-500/20 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Delete Site</span>
@@ -1543,7 +1546,7 @@ export function AdminDashboard() {
                   <button
                     type="button"
                     onClick={() => setEditingSite(null)}
-                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-neutral-300 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white text-xs font-medium transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>

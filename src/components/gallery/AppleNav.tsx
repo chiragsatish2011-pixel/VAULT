@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface AppleNavProps {
   totalCount: number;
@@ -75,6 +76,8 @@ export function AppleNav({ totalCount }: AppleNavProps) {
           >
             Chirag S.
           </a>
+
+          <ThemeToggle />
         </div>
       </div>
     </header>

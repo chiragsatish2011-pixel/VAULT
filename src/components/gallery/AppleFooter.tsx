@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface AppleFooterProps {
   totalCount: number;
@@ -32,10 +33,11 @@ export function AppleFooter({ totalCount }: AppleFooterProps) {
           <span className="hidden sm:inline text-black/30 dark:text-white/30">•</span>
           <span>Designed & built by Chirag S.</span>
           <span className="hidden sm:inline text-black/30 dark:text-white/30">•</span>
-          <span>{count} projects archived</span>
+          <span>{count} works</span>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-5">
+          <ThemeToggle />
           <a
             href="https://github.com/chiragsatish2011-pixel"
             target="_blank"
@@ -45,7 +47,7 @@ export function AppleFooter({ totalCount }: AppleFooterProps) {
             GitHub
           </a>
           <span className="text-black/30 dark:text-white/30">•</span>
-          <span>© {currentYear} All rights reserved.</span>
+          <span>© {currentYear}</span>
         </div>
       </div>
     </footer>

@@ -55,21 +55,18 @@ export function AppleGrid({ sites: initialSites }: AppleGridProps) {
             </svg>
           </div>
 
-          <span className="text-[11px] font-mono font-medium tracking-[0.25em] text-[#0071e3] dark:text-[#2997ff] uppercase mb-2">
-            Archive Standby
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-950 dark:text-white mb-3">
-            VAULT Ready for Curation
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-950 dark:text-white mb-2">
+            No projects published yet
           </h2>
           <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 max-w-md mx-auto mb-8 font-normal leading-relaxed">
-            All previous records have been cleared. Access the administrative console to capture and index your live web deployments with headless rendering.
+            Manage and curate your web portfolio from the admin console.
           </p>
 
           <Link
             href="/chirag"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-gradient-to-b from-[#0077ed] to-[#0062c4] hover:from-[#0071e3] hover:to-[#005bb5] active:scale-98 text-white font-medium text-sm transition-all shadow-[0_6px_24px_rgba(0,113,227,0.35),inset_0_1px_0_0_rgba(255,255,255,0.3)] border border-white/20"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-gradient-to-b from-[#0077ed] to-[#0062c4] hover:from-[#0071e3] hover:to-[#005bb5] active:scale-98 text-white font-medium text-sm transition-all shadow-[0_6px_24px_rgba(0,113,227,0.35),inset_0_1px_0_0_rgba(255,255,255,0.3)] border border-white/20"
           >
-            <span>Open Admin Portal</span>
+            <span>Open Admin Console</span>
             <span aria-hidden="true">↗</span>
           </Link>
         </div>

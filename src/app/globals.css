@@ -11,15 +11,13 @@
   --apple-border: rgba(0, 0, 0, 0.08);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --apple-bg: #000000;
-    --apple-text: #f5f5f7;
-    --apple-text-secondary: #86868b;
-    --apple-nav-bg: rgba(0, 0, 0, 0.8);
-    --apple-blue: #2997ff;
-    --apple-border: rgba(255, 255, 255, 0.12);
-  }
+html.dark {
+  --apple-bg: #000000;
+  --apple-text: #f5f5f7;
+  --apple-text-secondary: #86868b;
+  --apple-nav-bg: rgba(0, 0, 0, 0.8);
+  --apple-blue: #2997ff;
+  --apple-border: rgba(255, 255, 255, 0.12);
 }
 
 * {
