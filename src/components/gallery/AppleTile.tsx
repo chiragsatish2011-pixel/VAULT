@@ -21,7 +21,7 @@ export function AppleTile({ site, isPriority = false, index }: AppleTileProps) {
 
   return (
     <div
-      className="grid-tile relative group overflow-hidden bg-black aspect-[16/10] select-none"
+      className="grid-tile relative group overflow-hidden rounded-2xl border border-black/[0.09] dark:border-white/[0.14] bg-white dark:bg-[#121214] aspect-[16/10] select-none shadow-[0_2px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.6)] transition-all duration-300 hover:border-[#0071e3] dark:hover:border-[#2997ff] hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_12px_36px_rgba(0,0,0,0.8)]"
       style={{
         animationDelay: `${Math.min((index % 6) * 50, 300)}ms`,
       }}
@@ -35,8 +35,8 @@ export function AppleTile({ site, isPriority = false, index }: AppleTileProps) {
         onBlur={() => setIsFocused(false)}
         className="block w-full h-full relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue focus-visible:ring-inset z-10"
       >
-        {/* Full-bleed Thumbnail */}
-        <div className="relative w-full h-full overflow-hidden">
+        {/* Full-bleed Thumbnail with crisp clipping */}
+        <div className="relative w-full h-full overflow-hidden bg-neutral-100 dark:bg-[#0c0c0e]">
           <Image
             src={imageSrc}
             alt={site.name}
@@ -52,17 +52,23 @@ export function AppleTile({ site, isPriority = false, index }: AppleTileProps) {
           />
         </div>
 
+        {/* Crisp Hairline Border Bezel */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/[0.06] dark:ring-white/[0.1] group-hover:ring-2 group-hover:ring-apple-blue dark:group-hover:ring-apple-blue transition-all duration-200 z-20"
+        />
+
         {/* Gradient Overlay & Info: slides up on hover, focus, or tap */}
         <div
-          className={`absolute inset-0 flex flex-col justify-end p-6 sm:p-7 md:p-8 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-all duration-300 ease-out ${
+          className={`absolute inset-0 z-30 flex flex-col justify-end p-6 sm:p-7 md:p-8 bg-gradient-to-t from-black/95 via-black/55 to-transparent transition-all duration-300 ease-out ${
             isFocused ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0"
           }`}
         >
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-white text-lg sm:text-xl font-semibold tracking-tight truncate">
+            <h2 className="text-white text-lg sm:text-xl font-semibold tracking-tight truncate drop-shadow-sm">
               {site.name}
             </h2>
-            <span className="shrink-0 inline-flex items-center gap-1 text-[13px] font-medium text-white/90 group-hover:text-apple-blue transition-colors">
+            <span className="shrink-0 inline-flex items-center gap-1 text-[13px] font-medium text-white/95 group-hover:text-apple-blue transition-colors">
               Visit
               <span aria-hidden="true" className="text-xs transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
                 ↗
@@ -71,7 +77,7 @@ export function AppleTile({ site, isPriority = false, index }: AppleTileProps) {
           </div>
 
           {site.description && (
-            <p className="mt-1.5 text-[13px] sm:text-sm text-white/75 line-clamp-2 leading-relaxed font-normal">
+            <p className="mt-1.5 text-[13px] sm:text-sm text-white/80 line-clamp-2 leading-relaxed font-normal drop-shadow-sm">
               {site.description}
             </p>
           )}
