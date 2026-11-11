@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -34,10 +34,20 @@ import {
 import type { SiteItem } from "@/lib/sites-store";
 import { INITIAL_VAULT_SITES } from "@/lib/initial-sites";
 import { normalizeUrl } from "@/lib/url-utils";
-import { ThemeToggle } from "@/components/gallery/ThemeToggle";
 
 export function AdminDashboard() {
-  const [sites, setSites] = useState<SiteItem[]>([]);
+  const [sites, setSites] = useState<SiteItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("vault_curated_sites");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,19 +105,55 @@ export function AdminDashboard() {
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Unified State & Cloud Persistence Engine
+  const persistSites = useCallback((nextSites: SiteItem[]) => {
+    const sorted = [...nextSites].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    setSites(sorted);
+
+    try {
+      localStorage.setItem("vault_curated_sites", JSON.stringify(sorted));
+      localStorage.setItem("vault_curated_updated_at", new Date().toISOString());
+      window.dispatchEvent(new CustomEvent("vault_sites_updated", { detail: sorted }));
+
+      if (typeof BroadcastChannel !== "undefined") {
+        const bc = new BroadcastChannel("vault_sync_channel");
+        bc.postMessage({ type: "SYNC_SITES", sites: sorted });
+        bc.close();
+      }
+    } catch {}
+
+    // Synchronize to serverless store
+    fetch("/api/admin/sites/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sites: sorted }),
+    }).catch(() => {});
+  }, []);
+
   const fetchSites = async () => {
+    let localSaved: SiteItem[] = [];
+    try {
+      const raw = localStorage.getItem("vault_curated_sites");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localSaved = parsed;
+          setSites(parsed);
+        }
+      }
+    } catch {}
+
     try {
       const res = await fetch("/api/admin/sites");
-      if (!res.ok) throw new Error("Failed to load sites.");
+      if (!res.ok) {
+        if (localSaved.length > 0) {
+          setLoading(false);
+          return;
+        }
+        throw new Error("Failed to load sites.");
+      }
       const data = await res.json();
       const serverSites: SiteItem[] = data.sites || [];
-
-      // Check localStorage for offline / multi-container resilience
-      let localSaved: SiteItem[] = [];
-      try {
-        const raw = localStorage.getItem("vault_curated_sites");
-        if (raw) localSaved = JSON.parse(raw);
-      } catch {}
 
       // Smart Reconciliation: merge server sites and local client edits without data loss
       let finalSites = serverSites;
@@ -124,7 +170,7 @@ export function AdminDashboard() {
           }
           const localTime = new Date(localItem.updatedAt || 0).getTime();
           const serverTime = new Date(matchingServer.updatedAt || 0).getTime();
-          if (localTime > serverTime) {
+          if (localTime >= serverTime) {
             hasNewerLocalEdits = true;
             return { ...matchingServer, ...localItem };
           }
@@ -140,18 +186,14 @@ export function AdminDashboard() {
           }
         });
 
+        finalSites = merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         if (hasNewerLocalEdits) {
-          finalSites = merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
           fetch("/api/admin/sites/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ sites: finalSites }),
           }).catch(() => {});
-        } else {
-          finalSites = serverSites;
         }
-      } else if (serverSites.length > 0) {
-        finalSites = serverSites;
       } else if (localSaved.length > 0) {
         finalSites = localSaved;
         fetch("/api/admin/sites/sync", {
@@ -159,6 +201,8 @@ export function AdminDashboard() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sites: localSaved }),
         }).catch(() => {});
+      } else if (serverSites.length > 0) {
+        finalSites = serverSites;
       } else {
         finalSites = INITIAL_VAULT_SITES;
         fetch("/api/admin/sites/sync", {
@@ -173,7 +217,9 @@ export function AdminDashboard() {
         localStorage.setItem("vault_curated_sites", JSON.stringify(finalSites));
       } catch {}
     } catch (err: any) {
-      setError(err.message);
+      if (localSaved.length === 0) {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -321,13 +367,11 @@ export function AdminDashboard() {
         thumbnail800: data.capture.thumbnail800,
         thumbnail400: data.capture.thumbnail400,
         blurDataURL: data.capture.blurDataURL,
+        updatedAt: new Date().toISOString(),
       };
 
       const nextSites = sites.map((s) => (s.id === siteId ? updatedSite : s));
-      setSites(nextSites);
-      try {
-        localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
-      } catch {}
+      persistSites(nextSites);
 
       setActionNotice(`✓ Custom thumbnail applied to "${siteName}" in VAULT.`);
       setTimeout(() => setActionNotice(null), 3500);
@@ -384,7 +428,6 @@ export function AdminDashboard() {
       );
       setTimeout(() => setActionNotice(null), 3500);
 
-      // Immediately persist to local state & localStorage, replacing matched site by id or url
       const existsIndex = sites.findIndex(
         (s) => s.id === savedSite.id || normalizeUrl(s.url) === normalizeUrl(savedSite.url)
       );
@@ -395,10 +438,7 @@ export function AdminDashboard() {
       } else {
         newSites = [savedSite, ...sites];
       }
-      setSites(newSites);
-      try {
-        localStorage.setItem("vault_curated_sites", JSON.stringify(newSites));
-      } catch {}
+      persistSites(newSites);
     } catch (err: any) {
       setError(err.message);
     }
@@ -433,13 +473,18 @@ export function AdminDashboard() {
       });
 
       const updatedData = await updatedRes.json();
-      if (updatedData.site) {
-        const nextSites = sites.map((s) => (s.id === site.id ? updatedData.site : s));
-        setSites(nextSites);
-        try {
-          localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
-        } catch {}
-      }
+      const updatedSite = updatedData.site || {
+        ...site,
+        thumbnailUrl: cap.thumbnailUrl,
+        thumbnail800: cap.thumbnail800,
+        thumbnail400: cap.thumbnail400,
+        blurDataURL: cap.blurDataURL,
+        name: cap.title || site.name,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const nextSites = sites.map((s) => (s.id === site.id ? updatedSite : s));
+      persistSites(nextSites);
 
       setActionNotice(`Updated snapshot for "${site.name}".`);
       setTimeout(() => setActionNotice(null), 3500);
@@ -457,13 +502,14 @@ export function AdminDashboard() {
         body: JSON.stringify({ hidden: !site.hidden }),
       });
       const data = await res.json();
-      if (data.site) {
-        const nextSites = sites.map((s) => (s.id === site.id ? data.site : s));
-        setSites(nextSites);
-        try {
-          localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
-        } catch {}
-      }
+      const updatedSite = data.site || {
+        ...site,
+        hidden: !site.hidden,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const nextSites = sites.map((s) => (s.id === site.id ? updatedSite : s));
+      persistSites(nextSites);
     } catch (err: any) {
       setError(err.message);
     }
@@ -475,10 +521,7 @@ export function AdminDashboard() {
     try {
       await fetch(`/api/admin/sites/${site.id}`, { method: "DELETE" });
       const nextSites = sites.filter((s) => s.id !== site.id);
-      setSites(nextSites);
-      try {
-        localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
-      } catch {}
+      persistSites(nextSites);
 
       setActionNotice(`Removed "${site.name}".`);
       setTimeout(() => setActionNotice(null), 3000);
@@ -497,11 +540,14 @@ export function AdminDashboard() {
     newSites[index] = newSites[targetIndex];
     newSites[targetIndex] = temp;
 
-    const orderedIds = newSites.map((s) => s.id);
-    setSites(newSites);
-    try {
-      localStorage.setItem("vault_curated_sites", JSON.stringify(newSites));
-    } catch {}
+    // Update order property
+    const orderedIds = newSites.map((s, idx) => {
+      s.order = idx;
+      s.updatedAt = new Date().toISOString();
+      return s.id;
+    });
+
+    persistSites(newSites);
 
     try {
       await fetch("/api/admin/sites", {
@@ -563,8 +609,8 @@ export function AdminDashboard() {
         blurDataURL: cap.blurDataURL,
       }));
 
-      setActionNotice("✓ New thumbnail applied to edit draft.");
-      setTimeout(() => setActionNotice(null), 3000);
+      setActionNotice("✓ New thumbnail applied! Click Save Changes to commit.");
+      setTimeout(() => setActionNotice(null), 3500);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -636,17 +682,7 @@ export function AdminDashboard() {
         .map((s) => (s.id === editingSite.id ? updatedSite : s))
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-      setSites(nextSites);
-      try {
-        localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
-      } catch {}
-
-      // Synchronize with server store
-      fetch("/api/admin/sites/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sites: nextSites }),
-      }).catch(() => {});
+      persistSites(nextSites);
 
       setActionNotice(`✓ Saved changes for "${editForm.name}". Live gallery updated.`);
       setTimeout(() => setActionNotice(null), 3500);
@@ -665,16 +701,7 @@ export function AdminDashboard() {
     try {
       await fetch(`/api/admin/sites/${editingSite.id}`, { method: "DELETE" });
       const nextSites = sites.filter((s) => s.id !== editingSite.id);
-      setSites(nextSites);
-      try {
-        localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
-      } catch {}
-
-      fetch("/api/admin/sites/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sites: nextSites }),
-      }).catch(() => {});
+      persistSites(nextSites);
 
       setActionNotice(`Removed "${editingSite.name}".`);
       setTimeout(() => setActionNotice(null), 3000);
@@ -717,21 +744,11 @@ export function AdminDashboard() {
         throw new Error("Invalid backup file. Expected a JSON array of sites.");
       }
 
-      setSites(parsed);
-      try {
-        localStorage.setItem("vault_curated_sites", JSON.stringify(parsed));
-      } catch {}
-
-      await fetch("/api/admin/sites/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sites: parsed }),
-      });
-
-      setActionNotice(`Successfully restored ${parsed.length} projects from backup.`);
+      persistSites(parsed);
+      setActionNotice(`Restored ${parsed.length} projects from backup.`);
       setTimeout(() => setActionNotice(null), 3500);
     } catch (err: any) {
-      setError(`Failed to restore backup: ${err.message}`);
+      setError(err.message);
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -759,18 +776,18 @@ export function AdminDashboard() {
     : "";
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#000000] text-neutral-900 dark:text-neutral-100 font-sans selection:bg-[#0071e3] selection:text-white transition-colors duration-300">
+    <div className="min-h-screen bg-[#000000] text-white font-sans selection:bg-[#2997ff] selection:text-black">
       {/* Top Admin Navigation Header */}
-      <header className="sticky top-0 z-40 w-full bg-[#fbfbfd]/80 dark:bg-black/80 backdrop-blur-2xl border-b border-black/[0.08] dark:border-white/[0.1] shadow-[0_1px_0_0_rgba(0,0,0,0.03)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
+      <header className="sticky top-0 z-40 w-full bg-black/80 backdrop-blur-2xl border-b border-white/[0.1] shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
         <div className="max-w-6xl mx-auto px-6 sm:px-10 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="text-lg font-semibold tracking-[-0.03em] bg-gradient-to-b from-neutral-950 to-neutral-700 dark:from-white dark:to-neutral-300 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+              className="text-lg font-semibold tracking-[-0.03em] bg-gradient-to-b from-white to-neutral-300 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
             >
               VAULT
             </Link>
-            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-neutral-600 dark:text-neutral-300 font-mono tracking-widest uppercase border border-black/10 dark:border-white/15">
+            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/10 text-neutral-300 font-mono tracking-widest uppercase border border-white/15">
               Admin
             </span>
           </div>
@@ -779,7 +796,7 @@ export function AdminDashboard() {
             <button
               onClick={handleExportBackup}
               title="Download JSON archive backup"
-              className="text-xs font-medium text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="text-xs font-medium text-neutral-400 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Backup</span>
@@ -788,7 +805,7 @@ export function AdminDashboard() {
             <button
               onClick={() => fileInputRef.current?.click()}
               title="Restore archive from JSON backup"
-              className="text-xs font-medium text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="text-xs font-medium text-neutral-400 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Restore</span>
@@ -805,17 +822,15 @@ export function AdminDashboard() {
             <Link
               href="/"
               target="_blank"
-              className="text-xs font-medium text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1.5 transition-colors"
+              className="text-xs font-medium text-neutral-400 hover:text-white flex items-center gap-1.5 transition-colors"
             >
               <span>View Gallery</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
 
-            <ThemeToggle />
-
             <button
               onClick={handleLogout}
-              className="px-3.5 py-1.5 rounded-full border border-black/10 dark:border-white/15 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:border-black/30 dark:hover:border-white/30 flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-1.5 rounded-full border border-white/15 text-xs font-medium text-neutral-400 hover:text-white hover:border-white/30 flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Log out</span>
@@ -828,91 +843,93 @@ export function AdminDashboard() {
       <main className="max-w-6xl mx-auto px-6 sm:px-10 py-10 space-y-10">
         {/* Statistics Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div className="relative p-6 rounded-2xl border-2 border-black/10 dark:border-white/15 bg-white dark:bg-[#0c0c0e] shadow-sm overflow-hidden">
+          <div className="relative p-6 rounded-2xl border-2 border-white/15 bg-[#0c0c0e] shadow-sm overflow-hidden">
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
             />
             <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider font-mono">Total Sites</span>
-            <div className="text-3xl font-semibold mt-1 tracking-tight text-neutral-900 dark:text-white">{sites.length}</div>
+            <div className="text-3xl font-semibold mt-1 tracking-tight text-white">{sites.length}</div>
           </div>
-          <div className="relative p-6 rounded-2xl border-2 border-black/10 dark:border-white/15 bg-white dark:bg-[#0c0c0e] shadow-sm overflow-hidden">
+          <div className="relative p-6 rounded-2xl border-2 border-white/15 bg-[#0c0c0e] shadow-sm overflow-hidden">
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
             />
             <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider font-mono">Publicly Visible</span>
-            <div className="text-3xl font-semibold mt-1 tracking-tight text-emerald-600 dark:text-emerald-400">{liveSitesCount}</div>
+            <div className="text-3xl font-semibold mt-1 tracking-tight text-emerald-400">{liveSitesCount}</div>
           </div>
-          <div className="col-span-2 sm:col-span-1 relative p-6 rounded-2xl border-2 border-black/10 dark:border-white/15 bg-white dark:bg-[#0c0c0e] shadow-sm overflow-hidden">
+          <div className="col-span-2 sm:col-span-1 relative p-6 rounded-2xl border-2 border-white/15 bg-[#0c0c0e] shadow-sm overflow-hidden">
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
             />
             <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider font-mono">Hidden / Staged</span>
-            <div className="text-3xl font-semibold mt-1 tracking-tight text-neutral-400 dark:text-neutral-500">{sites.length - liveSitesCount}</div>
+            <div className="text-3xl font-semibold mt-1 tracking-tight text-neutral-500">{sites.length - liveSitesCount}</div>
           </div>
         </div>
 
         {/* Notifications */}
         {actionNotice && (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-sm font-medium flex items-center gap-2.5 animate-fadeIn">
+          <div className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-300 text-sm font-medium flex items-center gap-2.5 animate-fadeIn">
             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
             <span>{actionNotice}</span>
           </div>
         )}
 
+        {/* Error Callout */}
         {error && (
-          <div className="p-4 rounded-2xl bg-red-500/10 border-2 border-red-500/30 text-red-700 dark:text-red-400 text-sm font-medium flex items-center gap-2.5 animate-fadeIn">
-            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-            <span>{error}</span>
+          <div className="p-4 rounded-2xl bg-red-950/40 border-2 border-red-500/30 text-red-300 text-sm font-medium flex items-center justify-between gap-3 animate-fadeIn">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-xs text-red-400 hover:text-white transition-colors cursor-pointer"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
-        {/* ======================================================== */}
-        {/* ADD SITE BY URL (CORE FEATURE)                           */}
-        {/* ======================================================== */}
-        <section className="relative p-8 sm:p-10 rounded-3xl bg-white dark:bg-[#0c0c0f] border-2 border-black/15 dark:border-white/20 shadow-xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.18)] space-y-6 overflow-hidden">
-          {/* Top specular edge */}
+        {/* Capture / Add Project Section */}
+        <section className="relative p-8 sm:p-10 rounded-3xl bg-[#0c0c0f] border-2 border-white/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.18)] space-y-6 overflow-hidden">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent"
           />
 
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0071e3]/10 dark:bg-[#2997ff]/10 border border-[#0071e3]/20 dark:border-[#2997ff]/20 text-[#0071e3] dark:text-[#2997ff] text-xs font-mono uppercase tracking-wider mb-3">
-              <Camera className="w-3.5 h-3.5" />
-              <span>Capture & Add</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-neutral-950 dark:text-white">
-              Add Project by URL
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white mb-2">
+              Capture &amp; Add Project by URL
             </h2>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2 font-normal leading-relaxed">
-              Enter any public web deployment URL or GitHub repository URL. The capture engine loads the site, captures a high-resolution thumbnail, and publishes it to your showcase.
+            <p className="text-sm text-neutral-400 max-w-2xl leading-relaxed font-normal">
+              Enter any public web deployment or GitHub repo URL. The capture engine analyzes typography, WebGL shaders, and entrance animations, renders a 1440×900 WebP thumbnail, and indexes it into your gallery.
             </p>
           </div>
 
+          {/* URL Input Form */}
           <form onSubmit={handleStartCapture} className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <input
-                type="url"
+                type="text"
                 value={inputUrl}
                 onChange={(e) => setInputUrl(e.target.value)}
-                placeholder="https://my-deployment.vercel.app or https://github.com/user/repo"
-                required
+                placeholder="https://my-project.vercel.app or https://github.com/owner/repo"
                 disabled={isCapturing}
-                className="w-full h-14 px-5 rounded-2xl bg-neutral-100 dark:bg-[#15151b] border-2 border-black/10 dark:border-white/15 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-[#0071e3] dark:focus:border-[#2997ff] focus:ring-4 focus:ring-[#0071e3]/20 transition-all font-mono shadow-inner"
+                className="w-full h-13 px-4.5 rounded-xl bg-white/[0.04] border-2 border-white/[0.14] text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-[#2997ff] focus:ring-4 focus:ring-[#2997ff]/15 transition-all font-mono"
               />
             </div>
 
             <button
               type="submit"
               disabled={isCapturing || !inputUrl.trim()}
-              className="h-14 px-8 rounded-2xl bg-gradient-to-b from-[#0077ed] to-[#0062c4] hover:from-[#0071e3] hover:to-[#005bb5] active:scale-98 text-white font-medium text-sm flex items-center justify-center gap-2.5 disabled:opacity-40 transition-all cursor-pointer shrink-0 shadow-[0_4px_20px_rgba(0,113,227,0.35),inset_0_1px_0_0_rgba(255,255,255,0.25)] border border-white/20"
+              className="h-13 px-7 rounded-xl bg-gradient-to-b from-[#0077ed] to-[#0062c4] hover:from-[#0071e3] hover:to-[#005bb5] active:scale-[0.98] text-white font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-all cursor-pointer shadow-[0_6px_24px_rgba(0,113,227,0.35),inset_0_1px_0_0_rgba(255,255,255,0.25)] border border-white/20 shrink-0"
             >
               {isCapturing ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
                   <span>Capturing...</span>
                 </>
               ) : (
@@ -924,17 +941,11 @@ export function AdminDashboard() {
             </button>
           </form>
 
-          {/* Screenshot Timer & Settle Wait Controls */}
-          <div className="p-4 rounded-2xl bg-neutral-100/80 dark:bg-[#121217] border-2 border-black/10 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
-              <Clock className="w-4 h-4 text-apple-blue shrink-0" />
-              <span className="font-semibold">Capture Settle Timer:</span>
-              <span className="font-mono text-apple-blue font-bold px-2 py-0.5 rounded bg-apple-blue/10 border border-apple-blue/20">
-                {settleDelay}s
-              </span>
-              <span className="text-neutral-500 text-[11px] hidden sm:inline">
-                (controls wait delay for 3D shaders, WebGL, animations & fonts)
-              </span>
+          {/* Settle Timer Presets & Manual Image Upload Controls */}
+          <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-400 border-t border-white/10">
+            <div className="flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-neutral-400" />
+              <span className="font-medium text-neutral-300">Screenshot Settle Wait:</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
@@ -952,21 +963,21 @@ export function AdminDashboard() {
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                     settleDelay === preset.val
                       ? "bg-apple-blue text-white shadow-xs"
-                      : "bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300"
+                      : "bg-white/5 hover:bg-white/10 text-neutral-300"
                   }`}
                 >
                   {preset.label}
                 </button>
               ))}
 
-              <div className="flex items-center gap-1 ml-1 pl-2 border-l border-black/10 dark:border-white/10">
+              <div className="flex items-center gap-1 ml-1 pl-2 border-l border-white/10">
                 <input
                   type="number"
                   min={1}
                   max={25}
                   value={settleDelay}
                   onChange={(e) => setSettleDelay(Math.max(1, Math.min(25, Number(e.target.value) || 5)))}
-                  className="w-12 h-6 px-1.5 rounded bg-black/5 dark:bg-white/10 text-center font-mono text-xs text-neutral-900 dark:text-white border border-black/10 dark:border-white/15 focus:outline-none focus:border-apple-blue"
+                  className="w-12 h-6 px-1.5 rounded bg-white/10 text-center font-mono text-xs text-white border border-white/15 focus:outline-none focus:border-apple-blue"
                 />
                 <span className="text-[10px] text-neutral-400">sec</span>
               </div>
@@ -984,11 +995,11 @@ export function AdminDashboard() {
           </div>
 
           {inputUrlMatch && (
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-300 animate-fadeIn">
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-between gap-3 text-xs text-emerald-300 animate-fadeIn">
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                 <div>
-                  <span className="font-semibold text-emerald-950 dark:text-emerald-100">
+                  <span className="font-semibold text-emerald-100">
                     Already in VAULT · Up to Date:
                   </span>{" "}
                   <span>
@@ -999,7 +1010,7 @@ export function AdminDashboard() {
               <button
                 type="button"
                 onClick={() => setSearchQuery(inputUrlMatch.name)}
-                className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 font-semibold transition-colors text-emerald-950 dark:text-emerald-100 shrink-0"
+                className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 font-semibold transition-colors text-emerald-100 shrink-0 cursor-pointer"
               >
                 Find in Search
               </button>
@@ -1007,7 +1018,7 @@ export function AdminDashboard() {
           )}
 
           {isCapturing && captureStatus && (
-            <div className="p-4 rounded-2xl bg-blue-500/10 border-2 border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs font-medium flex items-center gap-3 animate-fadeIn">
+            <div className="p-4 rounded-2xl bg-blue-500/10 border-2 border-blue-500/30 text-blue-300 text-xs font-medium flex items-center gap-3 animate-fadeIn">
               <Loader2 className="w-4 h-4 animate-spin text-blue-500 shrink-0" />
               <span>{captureStatus}</span>
             </div>
@@ -1015,33 +1026,33 @@ export function AdminDashboard() {
 
           {/* Captured Preview Card */}
           {capturedPreview && (
-            <div className="p-6 sm:p-8 rounded-2xl bg-neutral-100 dark:bg-[#15151a] border-2 border-black/15 dark:border-white/20 space-y-6 animate-fadeIn">
+            <div className="p-6 sm:p-8 rounded-2xl bg-[#15151a] border-2 border-white/20 space-y-6 animate-fadeIn">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-neutral-950 dark:text-white flex items-center gap-2">
+                <h3 className="text-base font-semibold text-white flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-apple-blue" />
                   <span>Review Captured Snapshot</span>
                 </h3>
                 {existingSiteMatch ? (
-                  <span className="text-xs px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500/30 font-semibold flex items-center gap-1.5">
+                  <span className="text-xs px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border-2 border-emerald-500/30 font-semibold flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                     <span>Already in VAULT · Up to Date</span>
                   </span>
                 ) : (
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
                     Ready to Publish
                   </span>
                 )}
               </div>
 
               {existingSiteMatch && (
-                <div className="p-4 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-300">
+                <div className="p-4 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-300">
                   <div className="flex items-start sm:items-center gap-2.5">
                     <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5 sm:mt-0" />
                     <div>
-                      <p className="font-semibold text-emerald-950 dark:text-emerald-100">
+                      <p className="font-semibold text-emerald-100">
                         Already in VAULT · You are completely up to date!
                       </p>
-                      <p className="text-emerald-800/90 dark:text-emerald-300/80 mt-0.5">
+                      <p className="text-emerald-300/80 mt-0.5">
                         This site is already indexed in your gallery as <strong>&ldquo;{existingSiteMatch.name}&rdquo;</strong>. No update is needed unless you wish to overwrite the snapshot or metadata.
                       </p>
                     </div>
@@ -1054,7 +1065,7 @@ export function AdminDashboard() {
                       setActionNotice(`&ldquo;${existingSiteMatch.name}&rdquo; is already up to date in VAULT.`);
                       setTimeout(() => setActionNotice(null), 3500);
                     }}
-                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-950 dark:text-emerald-100 font-semibold transition-colors shrink-0"
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-100 font-semibold transition-colors shrink-0 cursor-pointer"
                   >
                     Keep Existing (Cancel)
                   </button>
@@ -1062,7 +1073,7 @@ export function AdminDashboard() {
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="relative aspect-[16/10] rounded-xl overflow-hidden border-2 border-black/20 dark:border-white/25 bg-black shadow-md group">
+                <div className="relative aspect-[16/10] rounded-xl overflow-hidden border-2 border-white/25 bg-black shadow-md group">
                   <Image
                     src={previewImgSrc}
                     alt={capturedPreview.name}
@@ -1103,7 +1114,7 @@ export function AdminDashboard() {
                       onChange={(e) =>
                         setCapturedPreview({ ...capturedPreview, name: e.target.value })
                       }
-                      className="w-full h-11 px-3.5 rounded-xl bg-white dark:bg-[#0c0c0e] border-2 border-black/10 dark:border-white/15 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-apple-blue"
+                      className="w-full h-11 px-3.5 rounded-xl bg-[#0c0c0e] border-2 border-white/15 text-sm text-white focus:outline-none focus:border-apple-blue"
                     />
                   </div>
 
@@ -1117,23 +1128,35 @@ export function AdminDashboard() {
                       onChange={(e) =>
                         setCapturedPreview({ ...capturedPreview, description: e.target.value })
                       }
-                      className="w-full h-11 px-3.5 rounded-xl bg-white dark:bg-[#0c0c0e] border-2 border-black/10 dark:border-white/15 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-apple-blue"
+                      className="w-full h-11 px-3.5 rounded-xl bg-[#0c0c0e] border-2 border-white/15 text-sm text-white focus:outline-none focus:border-apple-blue"
                     />
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <div className="pt-2 flex flex-wrap items-center gap-3">
                     <button
+                      type="button"
                       onClick={handleConfirmAddSite}
-                      className="px-6 py-2.5 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold cursor-pointer shadow-md transition-all active:scale-98 flex items-center gap-2"
+                      className="h-11 px-6 rounded-xl bg-apple-blue hover:bg-[#0077ed] text-white font-medium text-sm flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-apple-blue/20"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>{existingSiteMatch ? "Update / Overwrite in VAULT" : "Publish to VAULT"}</span>
+                      <Plus className="w-4 h-4" />
+                      <span>{existingSiteMatch ? "Update in VAULT" : "Publish to VAULT"}</span>
                     </button>
+
                     <button
-                      onClick={() => setCapturedPreview(null)}
-                      className="px-5 py-2.5 rounded-xl bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-medium hover:bg-neutral-300 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
+                      type="button"
+                      onClick={() => customImageInputRef.current?.click()}
+                      className="h-11 px-4 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white text-xs font-medium flex items-center gap-2 transition-colors cursor-pointer"
                     >
-                      Dismiss
+                      <ImagePlus className="w-3.5 h-3.5 text-apple-blue" />
+                      <span>Replace Image Before Publish</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCapturedPreview(null)}
+                      className="h-11 px-5 rounded-xl border border-white/15 text-neutral-400 hover:text-white text-sm font-medium transition-colors cursor-pointer"
+                    >
+                      Discard
                     </button>
                   </div>
                 </div>
@@ -1142,68 +1165,60 @@ export function AdminDashboard() {
           )}
         </section>
 
-        {/* ======================================================== */}
-        {/* SITE LIST & MANAGEMENT                                   */}
-        {/* ======================================================== */}
+        {/* Existing Archived Sites Section */}
         <section className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold tracking-[-0.03em] text-neutral-950 dark:text-white">
-                Projects ({sites.length})
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+                <Layers className="w-5 h-5 text-apple-blue" />
+                <span>Archived Sites ({sites.length})</span>
               </h2>
-              <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                Reorder cards, edit metadata, update thumbnails, or toggle live status.
+              <p className="text-xs text-neutral-400 mt-1">
+                Manage, edit metadata, upload custom thumbnails, or reorder entries.
               </p>
             </div>
 
-            {/* Quick Filter Search Bar */}
-            {sites.length > 0 && (
-              <div className="relative w-full sm:w-64">
-                <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Filter projects..."
-                  className="w-full h-9 pl-9 pr-3 rounded-xl bg-neutral-100 dark:bg-[#121216] border border-black/10 dark:border-white/15 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-apple-blue"
-                />
-              </div>
-            )}
+            {/* Search Input */}
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search archived projects..."
+                className="w-full h-10 pl-10 pr-4 rounded-xl bg-white/[0.04] border border-white/15 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-apple-blue transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {loading ? (
-            <div className="py-24 flex flex-col justify-center items-center gap-3">
-              <Loader2 className="w-7 h-7 animate-spin text-apple-blue" />
-              <span className="text-xs text-neutral-500">Loading projects...</span>
-            </div>
-          ) : sites.length === 0 ? (
-            <div className="p-16 text-center rounded-3xl border-2 border-dashed border-black/15 dark:border-white/20 bg-black/[0.01] dark:bg-white/[0.01]">
-              <div className="w-12 h-12 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center mx-auto mb-4 text-neutral-400">
-                <Layers className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-1">
-                No Projects in VAULT
-              </h3>
-              <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
-                Paste any live URL into the capture field above to screenshot and index your first project.
-              </p>
+            <div className="p-12 text-center text-neutral-400 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="w-6 h-6 animate-spin text-apple-blue" />
+              <span className="text-sm">Loading archive...</span>
             </div>
           ) : filteredSites.length === 0 ? (
-            <div className="py-12 text-center text-sm text-neutral-500">
-              No projects matched &quot;{searchQuery}&quot;.
+            <div className="p-12 rounded-2xl border-2 border-dashed border-white/15 text-center text-neutral-400 text-sm">
+              {searchQuery ? `No sites matching "${searchQuery}"` : "No sites in archive yet."}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {filteredSites.map((site, idx) => {
                 const isCopied = copiedId === site.id;
-
                 return (
                   <div
                     key={site.id}
-                    className={`p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0d0d10] border-2 transition-all shadow-sm ${
+                    className={`p-4 sm:p-5 rounded-2xl bg-[#0d0d10] border-2 transition-all shadow-sm ${
                       site.hidden
-                        ? "border-black/10 dark:border-white/10 opacity-60"
-                        : "border-black/15 dark:border-white/20 hover:border-black/30 dark:hover:border-white/35"
+                        ? "border-white/10 opacity-60"
+                        : "border-white/20 hover:border-white/35"
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1215,7 +1230,7 @@ export function AdminDashboard() {
                             onClick={() => handleMove(idx, "up")}
                             disabled={idx === 0}
                             title="Move Up"
-                            className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-black dark:hover:text-white disabled:opacity-20 cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white disabled:opacity-20 cursor-pointer"
                           >
                             <ChevronUp className="w-4 h-4" />
                           </button>
@@ -1223,7 +1238,7 @@ export function AdminDashboard() {
                             onClick={() => handleMove(idx, "down")}
                             disabled={idx === sites.length - 1}
                             title="Move Down"
-                            className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-black dark:hover:text-white disabled:opacity-20 cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white disabled:opacity-20 cursor-pointer"
                           >
                             <ChevronDown className="w-4 h-4" />
                           </button>
@@ -1236,7 +1251,7 @@ export function AdminDashboard() {
                             siteImageInputRef.current?.click();
                           }}
                           title="Click to upload custom thumbnail"
-                          className="relative w-24 h-15 sm:w-28 sm:h-17 rounded-xl overflow-hidden border-2 border-black/10 dark:border-white/15 bg-black shrink-0 shadow-xs group/thumb cursor-pointer"
+                          className="relative w-24 h-15 sm:w-28 sm:h-17 rounded-xl overflow-hidden border-2 border-white/15 bg-black shrink-0 shadow-xs group/thumb cursor-pointer"
                         >
                           <Image
                             src={site.thumbnailUrl || site.thumbnail800 || site.blurDataURL || "/captures/default-fallback.webp"}
@@ -1254,20 +1269,20 @@ export function AdminDashboard() {
                         <div className="min-w-0 flex-1">
                           <div>
                             <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-sm sm:text-base text-neutral-900 dark:text-white truncate">
+                              <h3 className="font-semibold text-sm sm:text-base text-white truncate">
                                 {site.name}
                               </h3>
                               {site.hidden ? (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium border border-amber-500/20">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-medium border border-amber-500/20">
                                   Hidden
                                 </span>
                               ) : (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium border border-emerald-500/20">
                                   Live
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-neutral-500 truncate mt-0.5">
+                            <p className="text-xs text-neutral-400 truncate mt-0.5">
                               {site.description || "No description"}
                             </p>
                             <div className="flex items-center gap-3 mt-1 text-[11px]">
@@ -1292,7 +1307,7 @@ export function AdminDashboard() {
                         <button
                           onClick={() => handleCopyUrl(site)}
                           title={isCopied ? "Copied!" : "Copy URL"}
-                          className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+                          className="p-2 rounded-xl border border-white/10 hover:border-white/30 text-neutral-400 hover:text-white transition-all cursor-pointer"
                         >
                           {isCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                         </button>
@@ -1302,7 +1317,7 @@ export function AdminDashboard() {
                           type="button"
                           onClick={() => handleRecapture(site)}
                           title="Re-capture fresh thumbnail"
-                          className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+                          className="p-2 rounded-xl border border-white/10 hover:border-white/30 text-neutral-400 hover:text-white transition-all cursor-pointer"
                         >
                           <RefreshCw className="w-4 h-4" />
                         </button>
@@ -1315,7 +1330,7 @@ export function AdminDashboard() {
                             siteImageInputRef.current?.click();
                           }}
                           title="Upload custom thumbnail image"
-                          className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-apple-blue dark:hover:text-apple-blue transition-all cursor-pointer"
+                          className="p-2 rounded-xl border border-white/10 hover:border-white/30 text-neutral-400 hover:text-apple-blue transition-all cursor-pointer"
                         >
                           <ImagePlus className="w-4 h-4 text-apple-blue" />
                         </button>
@@ -1334,7 +1349,7 @@ export function AdminDashboard() {
                         <button
                           onClick={() => handleToggleHide(site)}
                           title={site.hidden ? "Unhide from gallery" : "Hide from public gallery"}
-                          className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+                          className="p-2 rounded-xl border border-white/10 hover:border-white/30 text-neutral-400 hover:text-white transition-all cursor-pointer"
                         >
                           {site.hidden ? <EyeOff className="w-4 h-4 text-amber-500" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -1358,159 +1373,154 @@ export function AdminDashboard() {
 
         {/* Full Dedicated Site Editor Modal */}
         {editingSite && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 dark:bg-black/80 backdrop-blur-xl animate-fadeIn">
-            <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#0d0d12] border-2 border-black/10 dark:border-white/20 text-neutral-900 dark:text-white shadow-2xl dark:shadow-[0_32px_96px_-12px_rgba(0,0,0,0.95)] p-6 sm:p-8 space-y-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-xl animate-fadeIn">
+            <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-[#0d0d12] border-2 border-white/20 text-white shadow-[0_32px_96px_-12px_rgba(0,0,0,0.95)] p-6 sm:p-8 space-y-6">
               {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div>
                   <span className="text-[10px] font-mono tracking-widest uppercase text-apple-blue font-semibold">
                     Project Editor
                   </span>
-                  <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-950 dark:text-white mt-0.5">
+                  <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5">
                     Edit &ldquo;{editingSite.name}&rdquo;
                   </h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setEditingSite(null)}
-                  className="w-9 h-9 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer text-neutral-600 hover:text-black dark:text-neutral-300 dark:hover:text-white"
-                  title="Close"
+                  className="p-2 rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Thumbnail Preview & Management */}
-              <div className="space-y-3">
-                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 tracking-wider uppercase font-mono">
-                  Project Thumbnail Snapshot
-                </label>
-                <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border-2 border-black/10 dark:border-white/20 bg-neutral-100 dark:bg-black shadow-lg group">
-                  <Image
-                    src={editForm.thumbnailUrl || editForm.thumbnail800 || editForm.blurDataURL || "/captures/default-fallback.webp"}
-                    alt={editForm.name}
-                    fill
-                    unoptimized
-                    className="object-cover object-top"
-                  />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 p-4">
-                    <button
-                      type="button"
-                      onClick={() => editModalImageInputRef.current?.click()}
-                      className="px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-neutral-200 transition-all shadow-md flex items-center gap-2 cursor-pointer"
-                    >
-                      <ImagePlus className="w-4 h-4 text-apple-blue" />
-                      <span>Upload Image</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleModalRecapture}
-                      disabled={isModalCapturing}
-                      className="px-4 py-2 rounded-xl bg-black/80 text-white text-xs font-semibold hover:bg-black border border-white/20 transition-all shadow-md flex items-center gap-2 cursor-pointer"
-                    >
-                      <RefreshCw className={`w-4 h-4 ${isModalCapturing ? "animate-spin" : ""}`} />
-                      <span>{isModalCapturing ? "Capturing..." : "Re-capture"}</span>
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
-                  <span>16:10 aspect ratio · High-res WebP</span>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => editModalImageInputRef.current?.click()}
-                      className="text-apple-blue hover:underline cursor-pointer flex items-center gap-1 font-medium"
-                    >
-                      <ImagePlus className="w-3.5 h-3.5" />
-                      <span>Replace Image</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleModalRecapture}
-                      disabled={isModalCapturing}
-                      className="text-apple-blue hover:underline cursor-pointer flex items-center gap-1 font-medium"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isModalCapturing ? "animate-spin" : ""}`} />
-                      <span>Re-capture URL</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Inputs Grid */}
+              {/* Modal Form */}
               <div className="space-y-4">
+                {/* Thumbnail Preview & Replacement Controls */}
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 font-mono">
-                    PROJECT TITLE
+                  <label className="text-xs font-medium text-neutral-400 uppercase tracking-wider block mb-2">
+                    Project Thumbnail
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                    <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border-2 border-white/20 bg-black shadow-lg group">
+                      <Image
+                        src={editForm.thumbnailUrl || editForm.blurDataURL || "/captures/default-fallback.webp"}
+                        alt={editForm.name}
+                        fill
+                        unoptimized
+                        className="object-cover object-top"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
+                        <button
+                          type="button"
+                          onClick={() => editModalImageInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-lg bg-black/80 text-white text-[11px] font-medium border border-white/20 flex items-center gap-1.5"
+                        >
+                          <ImagePlus className="w-3.5 h-3.5 text-apple-blue" />
+                          <span>Upload File</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-2 space-y-2">
+                      <p className="text-xs text-neutral-400 leading-relaxed">
+                        Replace this thumbnail by uploading an image or triggering a headless browser recapture.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => editModalImageInputRef.current?.click()}
+                          disabled={isUploadingImage}
+                          className="px-3.5 py-1.5 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          {isUploadingImage ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <ImagePlus className="w-3.5 h-3.5 text-apple-blue" />
+                          )}
+                          <span>Upload Custom Image</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleModalRecapture}
+                          disabled={isModalCapturing}
+                          className="px-3.5 py-1.5 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          {isModalCapturing ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-3.5 h-3.5 text-apple-blue" />
+                          )}
+                          <span>Re-capture URL ({settleDelay}s)</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <label className="text-xs font-medium text-neutral-400 uppercase tracking-wider block mb-1">
+                    Project Title
                   </label>
                   <input
                     type="text"
                     value={editForm.name}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full h-11 px-3.5 rounded-xl bg-black/[0.03] dark:bg-white/5 border border-black/15 dark:border-white/15 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                    className="w-full h-11 px-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
                     placeholder="e.g. Nomin Code"
                   />
                 </div>
 
+                {/* Description */}
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 font-mono">
-                    DESCRIPTION / TAGLINE
+                  <label className="text-xs font-medium text-neutral-400 uppercase tracking-wider block mb-1">
+                    Tagline / Description
                   </label>
                   <textarea
                     rows={3}
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-black/[0.03] dark:bg-white/5 border border-black/15 dark:border-white/15 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20 resize-none"
-                    placeholder="Short tagline or summary of the project..."
+                    className="w-full p-3 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20 resize-none"
+                    placeholder="Short description of the web application or product..."
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 font-mono">
-                        TARGET URL
-                      </label>
-                      {editForm.url && (
-                        <a
-                          href={editForm.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[11px] text-apple-blue hover:underline inline-flex items-center gap-0.5 font-medium"
-                        >
-                          <span>Test Link</span>
-                          <ArrowUpRight className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
+                {/* URL */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-medium text-neutral-400 uppercase tracking-wider block mb-1">
+                      Deployment URL
+                    </label>
                     <input
                       type="url"
                       value={editForm.url}
                       onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
-                      className="w-full h-11 px-3.5 rounded-xl bg-black/[0.03] dark:bg-white/5 border border-black/15 dark:border-white/15 text-neutral-900 dark:text-white text-sm font-mono focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                      className="w-full h-11 px-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm font-mono focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
                       placeholder="https://..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 font-mono">
-                      GALLERY ORDER RANK
+                    <label className="text-xs font-medium text-neutral-400 uppercase tracking-wider block mb-1">
+                      Display Order Rank
                     </label>
                     <input
                       type="number"
                       value={editForm.order}
                       onChange={(e) => setEditForm({ ...editForm, order: Number(e.target.value) || 0 })}
-                      className="w-full h-11 px-3.5 rounded-xl bg-black/[0.03] dark:bg-white/5 border border-black/15 dark:border-white/15 text-neutral-900 dark:text-white text-sm font-mono focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                      className="w-full h-11 px-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm font-mono focus:outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
                       placeholder="0"
                     />
                   </div>
                 </div>
 
                 {/* Visibility Switch */}
-                <div className="p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold text-neutral-900 dark:text-white">Public Visibility</p>
-                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                    <p className="text-xs font-semibold text-white">Public Visibility</p>
+                    <p className="text-[11px] text-neutral-400">
                       {editForm.hidden
                         ? "Hidden — This site is hidden from the public showcase."
                         : "Public — This site is visible to everyone on the gallery."}
@@ -1521,8 +1531,8 @@ export function AdminDashboard() {
                     onClick={() => setEditForm({ ...editForm, hidden: !editForm.hidden })}
                     className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                       editForm.hidden
-                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30"
-                        : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30"
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                        : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                     }`}
                   >
                     {editForm.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -1532,11 +1542,11 @@ export function AdminDashboard() {
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-between pt-4 border-t border-black/10 dark:border-white/10">
+              <div className="flex items-center justify-between pt-4 border-t border-white/10">
                 <button
                   type="button"
                   onClick={handleDeleteFromModal}
-                  className="px-3.5 py-2 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/40 border border-red-500/20 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-950/40 border border-red-500/20 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Delete Site</span>
@@ -1546,7 +1556,7 @@ export function AdminDashboard() {
                   <button
                     type="button"
                     onClick={() => setEditingSite(null)}
-                    className="px-4 py-2 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-neutral-300 hover:text-white text-xs font-medium transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>

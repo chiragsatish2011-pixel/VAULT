@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Lock, ArrowRight, Shield, Loader2, Eye, EyeOff } from "lucide-react";
-import { ThemeToggle } from "@/components/gallery/ThemeToggle";
 
 export function AdminLoginForm() {
   const [passkey, setPasskey] = useState("");
@@ -41,49 +40,44 @@ export function AdminLoginForm() {
   };
 
   return (
-    <main className="relative min-h-screen w-full bg-[#fbfbfd] dark:bg-[#000000] text-neutral-900 dark:text-white flex flex-col items-center justify-center p-6 selection:bg-[#0071e3] selection:text-white overflow-hidden font-sans transition-colors duration-300">
-      {/* Top Bar Theme Toggle */}
-      <div className="fixed top-6 right-6 z-20">
-        <ThemeToggle />
-      </div>
-
+    <main className="relative min-h-screen w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 selection:bg-[#2997ff] selection:text-black overflow-hidden font-sans">
       {/* Ambient Lighting Pools */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-gradient-to-b from-[#0071e3]/10 dark:from-[#0071e3]/20 via-[#2997ff]/5 to-transparent blur-[140px] rounded-full"
+        className="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-gradient-to-b from-[#0071e3]/20 via-[#2997ff]/5 to-transparent blur-[140px] rounded-full"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-gradient-to-t from-black/[0.02] dark:from-white/[0.03] to-transparent blur-[120px]"
+        className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-gradient-to-t from-white/[0.03] to-transparent blur-[120px]"
       />
 
       {/* Floating Monolith Card */}
-      <div className="relative w-full max-w-[420px] rounded-3xl bg-white/80 dark:bg-[#0a0a0d]/80 border-2 border-black/10 dark:border-white/[0.14] p-8 sm:p-10 backdrop-blur-3xl shadow-[0_24px_64px_rgba(0,0,0,0.06)] dark:shadow-[0_32px_96px_-12px_rgba(0,0,0,0.95),inset_0_1px_0_0_rgba(255,255,255,0.2)] flex flex-col items-center z-10 transition-all">
-        {/* Subtle top edge specular hairline */}
+      <div className="relative w-full max-w-[420px] rounded-3xl bg-[#0a0a0d]/90 border-2 border-white/[0.14] p-8 sm:p-10 backdrop-blur-3xl shadow-[0_32px_96px_-12px_rgba(0,0,0,0.95),inset_0_1px_0_0_rgba(255,255,255,0.2)] flex flex-col items-center z-10">
+        {/* Specular hairline */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-black/10 dark:via-white/35 to-transparent"
+          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent"
         />
 
         {/* Lock Icon */}
         <div className="relative mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-black/[0.03] dark:bg-white/10 border border-black/10 dark:border-white/20 flex items-center justify-center shadow-sm dark:shadow-[0_8px_24px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.25)]">
-            <Lock className="w-7 h-7 text-[#0071e3] dark:text-[#2997ff]" />
+          <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.25)]">
+            <Lock className="w-7 h-7 text-[#2997ff]" />
           </div>
-          <div className="absolute -inset-1.5 rounded-2xl bg-[#0071e3]/15 dark:bg-[#2997ff]/25 blur-lg -z-10" />
+          <div className="absolute -inset-1.5 rounded-2xl bg-[#2997ff]/25 blur-lg -z-10" />
         </div>
 
         {/* Wordmark */}
-        <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.04em] bg-gradient-to-b from-neutral-950 to-neutral-700 dark:from-white dark:via-neutral-100 dark:to-neutral-400 bg-clip-text text-transparent mb-2 text-center">
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.04em] bg-gradient-to-b from-white via-neutral-100 to-neutral-400 bg-clip-text text-transparent mb-2 text-center">
           VAULT
         </h1>
-        <p className="text-xs sm:text-[13px] text-neutral-500 dark:text-neutral-400 mb-8 text-center font-normal leading-relaxed max-w-[280px]">
+        <p className="text-xs sm:text-[13px] text-neutral-400 mb-8 text-center font-normal leading-relaxed max-w-[280px]">
           Enter master passkey to access VAULT admin.
         </p>
 
         {/* Error Callout */}
         {error && (
-          <div className="w-full mb-6 py-3 px-4 rounded-xl bg-red-500/10 dark:bg-red-950/40 border border-red-500/20 dark:border-red-500/30 text-red-600 dark:text-red-300 text-xs font-medium flex items-center gap-2.5 animate-fadeIn backdrop-blur-sm">
+          <div className="w-full mb-6 py-3 px-4 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs font-medium flex items-center gap-2.5 animate-fadeIn backdrop-blur-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
             <span className="leading-snug">{error}</span>
           </div>
@@ -99,12 +93,12 @@ export function AdminLoginForm() {
               placeholder="Enter master passkey"
               disabled={loading}
               autoFocus
-              className="w-full h-13 px-4.5 pr-12 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border-2 border-black/10 dark:border-white/[0.14] text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 text-sm focus:outline-none focus:border-[#0071e3] dark:focus:border-[#2997ff] focus:ring-4 focus:ring-[#0071e3]/15 dark:focus:ring-[#2997ff]/15 transition-all font-mono tracking-wide"
+              className="w-full h-13 px-4.5 pr-12 rounded-xl bg-white/[0.04] border-2 border-white/[0.14] text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-[#2997ff] focus:ring-4 focus:ring-[#2997ff]/15 transition-all font-mono tracking-wide"
             />
             <button
               type="button"
               onClick={() => setShowPasskey(!showPasskey)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors cursor-pointer"
               tabIndex={-1}
               aria-label={showPasskey ? "Hide passkey" : "Show passkey"}
             >
@@ -129,14 +123,14 @@ export function AdminLoginForm() {
         </form>
 
         {/* Bottom Details */}
-        <div className="mt-8 pt-6 border-t border-black/[0.08] dark:border-white/[0.08] w-full flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
+        <div className="mt-8 pt-6 border-t border-white/[0.08] w-full flex items-center justify-between text-[11px] text-neutral-400 font-mono">
           <div className="flex items-center gap-1.5">
             <Shield className="w-3.5 h-3.5 text-neutral-400" />
             <span>Admin Gateway</span>
           </div>
           <Link
             href="/"
-            className="hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center gap-1"
+            className="hover:text-white transition-colors flex items-center gap-1"
           >
             <span>Exit to Gallery</span>
             <span aria-hidden="true">↗</span>

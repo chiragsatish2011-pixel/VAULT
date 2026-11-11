@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { VaultSite } from "@/lib/sites-store";
 import { AppleTile } from "./AppleTile";
@@ -10,30 +10,109 @@ interface AppleGridProps {
 }
 
 export function AppleGrid({ sites: initialSites }: AppleGridProps) {
-  const [sites, setSites] = useState<VaultSite[]>(initialSites || []);
-
-  useEffect(() => {
-    if (initialSites && initialSites.length > 0) {
-      setSites(initialSites);
-      try {
-        localStorage.setItem("vault_curated_sites", JSON.stringify(initialSites));
-      } catch {}
-    } else {
+  const [sites, setSites] = useState<VaultSite[]>(() => {
+    // 1. Immediately check localStorage during client hydration
+    if (typeof window !== "undefined") {
       try {
         const raw = localStorage.getItem("vault_curated_sites");
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setSites(parsed.filter((s: VaultSite) => !s.hidden));
+            return parsed.filter((s: VaultSite) => !s.hidden);
           }
         }
       } catch {}
     }
-  }, [initialSites]);
+    return (initialSites || []).filter((s) => !s.hidden);
+  });
+
+  const syncFromStorage = useCallback(() => {
+    try {
+      const raw = localStorage.getItem("vault_curated_sites");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSites(parsed.filter((s: VaultSite) => !s.hidden));
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  }, []);
+
+  useEffect(() => {
+    // 1. Prioritize local client storage
+    const hasLocal = syncFromStorage();
+
+    // 2. If no local edits exist, seed from server initialSites
+    if (!hasLocal && initialSites && initialSites.length > 0) {
+      setSites(initialSites.filter((s) => !s.hidden));
+      try {
+        localStorage.setItem("vault_curated_sites", JSON.stringify(initialSites));
+      } catch {}
+    }
+
+    // 3. Listen for in-window updates from Admin console
+    const handleVaultUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<VaultSite[]>;
+      if (customEvent.detail && Array.isArray(customEvent.detail)) {
+        setSites(customEvent.detail.filter((s) => !s.hidden));
+      } else {
+        syncFromStorage();
+      }
+    };
+    window.addEventListener("vault_sites_updated", handleVaultUpdate);
+
+    // 4. Listen for cross-tab storage updates
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "vault_curated_sites") {
+        syncFromStorage();
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    // 5. BroadcastChannel for instant cross-tab sync
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        bc = new BroadcastChannel("vault_sync_channel");
+        bc.onmessage = (msg) => {
+          if (msg.data?.type === "SYNC_SITES" && Array.isArray(msg.data.sites)) {
+            setSites(msg.data.sites.filter((s: VaultSite) => !s.hidden));
+          }
+        };
+      } catch {}
+    }
+
+    // 6. Dynamic fetch from public /api/sites
+    fetch("/api/sites", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.sites && Array.isArray(data.sites) && data.sites.length > 0) {
+          try {
+            const rawLocal = localStorage.getItem("vault_curated_sites");
+            const localUpdatedAt = localStorage.getItem("vault_curated_updated_at");
+            // Only overwrite if client has not made custom local edits
+            if (!rawLocal || !localUpdatedAt) {
+              setSites(data.sites.filter((s: VaultSite) => !s.hidden));
+              localStorage.setItem("vault_curated_sites", JSON.stringify(data.sites));
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      window.removeEventListener("vault_sites_updated", handleVaultUpdate);
+      window.removeEventListener("storage", handleStorageChange);
+      if (bc) bc.close();
+    };
+  }, [initialSites, syncFromStorage]);
+
   if (!sites || sites.length === 0) {
     return (
       <section className="w-full max-w-4xl mx-auto py-16 sm:py-24 px-6 flex flex-col items-center justify-center text-center">
-        <div className="relative w-full p-10 sm:p-14 rounded-3xl border-2 border-dashed border-black/15 dark:border-white/20 bg-white/40 dark:bg-white/[0.02] backdrop-blur-xl shadow-xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.1)] flex flex-col items-center overflow-hidden">
+        <div className="relative w-full p-10 sm:p-14 rounded-3xl border-2 border-dashed border-white/20 bg-white/[0.02] backdrop-blur-xl shadow-2xl flex flex-col items-center overflow-hidden">
           {/* Subtle Ambient Backlight */}
           <div
             aria-hidden="true"
@@ -41,7 +120,7 @@ export function AppleGrid({ sites: initialSites }: AppleGridProps) {
           />
 
           {/* Aperture / Screen Emblem */}
-          <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-[#121216] border-2 border-black/10 dark:border-white/15 flex items-center justify-center mb-6 text-[#0071e3] dark:text-[#2997ff] shadow-md dark:shadow-[0_8px_24px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.2)]">
+          <div className="w-16 h-16 rounded-2xl bg-[#121216] border-2 border-white/15 flex items-center justify-center mb-6 text-[#2997ff] shadow-[0_8px_24px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.2)]">
             <svg
               className="w-8 h-8"
               fill="none"
@@ -55,16 +134,16 @@ export function AppleGrid({ sites: initialSites }: AppleGridProps) {
             </svg>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-950 dark:text-white mb-2">
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white mb-2">
             No projects published yet
           </h2>
-          <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 max-w-md mx-auto mb-8 font-normal leading-relaxed">
+          <p className="text-sm sm:text-base text-neutral-400 max-w-md mx-auto mb-8 font-normal leading-relaxed">
             Manage and curate your web portfolio from the admin console.
           </p>
 
           <Link
             href="/chirag"
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-gradient-to-b from-[#0077ed] to-[#0062c4] hover:from-[#0071e3] hover:to-[#005bb5] active:scale-98 text-white font-medium text-sm transition-all shadow-[0_6px_24px_rgba(0,113,227,0.35),inset_0_1px_0_0_rgba(255,255,255,0.3)] border border-white/20"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-gradient-to-b from-[#0077ed] to-[#0062c4] hover:from-[#0071e3] hover:to-[#005bb5] active:scale-98 text-white font-medium text-sm transition-all shadow-[0_6px_24px_rgba(0,113,227,0.35),inset_0_1px_0_0_rgba(255,255,255,0.3)] border border-white/20 cursor-pointer"
           >
             <span>Open Admin Console</span>
             <span aria-hidden="true">↗</span>

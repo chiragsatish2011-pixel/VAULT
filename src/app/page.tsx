@@ -4,13 +4,15 @@ import { AppleHero } from "@/components/gallery/AppleHero";
 import { AppleGrid } from "@/components/gallery/AppleGrid";
 import { AppleFooter } from "@/components/gallery/AppleFooter";
 
-export const revalidate = 60; // ISR cache with on-demand tag revalidation
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function HomePage() {
   const sites = await getAllSites(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#fbfbfd] dark:bg-[#000000] text-black dark:text-white transition-colors">
+    <div className="min-h-screen flex flex-col bg-[#000000] text-white selection:bg-[#2997ff] selection:text-black">
       {/* Skip to Content for Accessibility */}
       <a href="#main-content" className="skip-link">
         Skip to gallery content

@@ -31,10 +31,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbfbfd" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-  ],
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -43,27 +40,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" style={{ colorScheme: "dark", backgroundColor: "#000000" }}>
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var stored = localStorage.getItem("vault_theme");
-                  var isDark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-                  if (isDark) {
-                    document.documentElement.classList.add("dark");
-                  } else {
-                    document.documentElement.classList.remove("dark");
-                  }
-                } catch(e) {}
-              })();
-            `,
+            __html: `document.documentElement.classList.add("dark");`,
           }}
         />
       </head>
-      <body className="min-h-screen bg-[#fbfbfd] dark:bg-[#000000] text-black dark:text-white transition-colors antialiased selection:bg-[#0071e3] selection:text-white dark:selection:bg-[#2997ff] dark:selection:text-black">
+      <body className="min-h-screen bg-[#000000] text-white transition-colors antialiased selection:bg-[#2997ff] selection:text-black font-sans">
         <SmoothScrollProvider>{children}</SmoothScrollProvider>
       </body>
     </html>
