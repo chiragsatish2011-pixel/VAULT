@@ -21,26 +21,29 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, url, description, thumbnailUrl, thumbnail800, thumbnail400, blurDataURL, order, hidden } = body;
+    const siteName = (body.name || body.title || "").trim();
+    const siteUrl = (body.url || "").trim();
+    const siteDesc = (body.description || body.tagline || "").trim();
 
-    if (!name || !url) {
+    if (!siteName || !siteUrl) {
       return NextResponse.json({ error: "Name and URL are required." }, { status: 400 });
     }
 
     const newSite = await createSite({
-      name: name.trim(),
-      url: url.trim(),
-      description: description ? description.trim() : "",
-      thumbnailUrl: thumbnailUrl || "/captures/chirag-sandy.webp",
-      thumbnail800: thumbnail800 || thumbnailUrl,
-      thumbnail400: thumbnail400 || thumbnailUrl,
-      blurDataURL: blurDataURL || "",
-      order: typeof order === "number" ? order : 0,
-      hidden: Boolean(hidden),
+      name: siteName,
+      url: siteUrl,
+      description: siteDesc,
+      thumbnailUrl: body.thumbnailUrl || "/captures/default-fallback.webp",
+      thumbnail800: body.thumbnail800 || body.thumbnailUrl || "/captures/default-fallback.webp",
+      thumbnail400: body.thumbnail400 || body.thumbnailUrl || "/captures/default-fallback.webp",
+      blurDataURL: body.blurDataURL || "",
+      order: typeof body.order === "number" ? body.order : 0,
+      hidden: Boolean(body.hidden),
     });
 
-    // Instant on-demand revalidation for public gallery
+    // Instant on-demand revalidation for public gallery & admin
     revalidatePath("/");
+    revalidatePath("/chirag");
     return NextResponse.json({ success: true, site: newSite });
   } catch (err: any) {
     console.error("Create site error:", err);
