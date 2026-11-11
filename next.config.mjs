@@ -16,6 +16,11 @@ const nextConfig = {
       'bcryptjs',
       '@prisma/client'
     ],
+    outputFileTracingIncludes: {
+      '/api/admin/capture': [
+        './node_modules/@sparticuz/chromium/bin/**',
+      ],
+    },
   },
   async headers() {
     return [

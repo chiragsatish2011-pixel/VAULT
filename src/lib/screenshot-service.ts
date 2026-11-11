@@ -13,7 +13,7 @@ export interface CaptureResult {
   blurDataURL: string;
 }
 
-// Simple in-memory mutex to ensure only ONE capture runs at a time per serverless instance
+// Simple in-memory mutex to ensure only ONE capture runs at a time per instance
 let isCaptureInProgress = false;
 
 function sleep(ms: number) {
@@ -51,7 +51,6 @@ async function storeImage(slug: string, suffix: string, buffer: Buffer): Promise
     return `/captures/${filename}`;
   } catch (err: any) {
     console.warn("Could not write to local filesystem (read-only environment):", err.message);
-    // Return relative path as last resort
     return `/captures/${filename}`;
   }
 }
@@ -66,10 +65,35 @@ async function getBrowser() {
 
   if (isServerless) {
     const chromium = (await import("@sparticuz/chromium")).default;
-    // Set up chromium configuration for serverless
     chromium.setGraphicsMode = false;
 
-    const executablePath = await chromium.executablePath();
+    // Check possible local bin paths
+    const possibleBinPaths = [
+      path.join(process.cwd(), "node_modules/@sparticuz/chromium/bin"),
+      "/var/task/node_modules/@sparticuz/chromium/bin",
+    ];
+    let binPath: string | undefined;
+    for (const p of possibleBinPaths) {
+      if (fs.existsSync(p)) {
+        binPath = p;
+        break;
+      }
+    }
+
+    let executablePath: string;
+    try {
+      if (binPath) {
+        executablePath = await chromium.executablePath(binPath);
+      } else {
+        executablePath = await chromium.executablePath(
+          "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar"
+        );
+      }
+    } catch (e: any) {
+      console.warn("Chromium executablePath resolution failed with input, using default:", e.message);
+      executablePath = await chromium.executablePath();
+    }
+
     return puppeteer.launch({
       args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
       defaultViewport: { width: 1440, height: 900, deviceScaleFactor: 1 },
@@ -82,15 +106,11 @@ async function getBrowser() {
   const possiblePaths = [
     process.env.CHROME_BIN,
     process.env.PUPPETEER_EXECUTABLE_PATH,
-    // Windows Chrome
     "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-    // Windows Edge
     "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
     "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
-    // macOS
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    // Linux
     "/usr/bin/google-chrome",
     "/usr/bin/chromium-browser",
     "/usr/bin/chromium",
@@ -106,7 +126,7 @@ async function getBrowser() {
 
   if (!localPath) {
     throw new Error(
-      "No Chromium/Chrome binary found locally. Set CHROME_BIN environment variable or run `npm run capture -- <url>`."
+      "No Chromium/Chrome binary found locally. Set CHROME_BIN environment variable."
     );
   }
 
@@ -119,7 +139,7 @@ async function getBrowser() {
 }
 
 /**
- * Core Headless Capture Function
+ * Core Headless Capture Function with Automatic Serverless Web Fallback
  */
 export async function captureSiteScreenshot(targetUrl: string, slug: string): Promise<CaptureResult> {
   // 1. SSRF Validation
@@ -137,69 +157,131 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
   isCaptureInProgress = true;
 
   let browser: any = null;
+  let rawBuffer: Buffer | null = null;
+  let meta = {
+    title: "",
+    description: "",
+    favicon: null as string | null,
+  };
 
   try {
-    browser = await getBrowser();
-    const page = await browser.newPage();
-
-    // Disable file downloads and alert popups
-    await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
-    page.on("dialog", async (dialog: any) => {
-      try {
-        await dialog.dismiss();
-      } catch {}
-    });
-
-    // Navigate to URL
-    await page.goto(validUrl, {
-      waitUntil: "networkidle2",
-      timeout: 20000,
-    });
-
-    // 3. MANDATORY 5-SECOND SETTLE WAIT (Per Brief Requirements)
-    // Allows fonts, animations, hero videos, and lazy content to settle
-    await sleep(5000);
-
-    // 4. Attempt to dismiss cookie banners where trivial
+    // Attempt 1: Headless Chromium via Puppeteer
     try {
-      await page.evaluate(() => {
-        const selectors = [
-          'button[id*="cookie" i]',
-          'button[class*="cookie" i]',
-          'button[id*="consent" i]',
-          'button[class*="consent" i]',
-          'button[id*="accept" i]',
-          'button[aria-label*="accept" i]',
-          'button[aria-label*="agree" i]',
-          '#onetrust-accept-btn-handler',
-        ];
-        for (const s of selectors) {
-          const el = document.querySelector(s) as HTMLElement;
-          if (el && typeof el.click === "function") {
-            el.click();
-            break;
-          }
-        }
+      browser = await getBrowser();
+      const page = await browser.newPage();
+
+      await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+      page.on("dialog", async (dialog: any) => {
+        try {
+          await dialog.dismiss();
+        } catch {}
       });
-      await sleep(500);
-    } catch {}
 
-    // 5. Extract metadata from page
-    const meta = await page.evaluate(() => {
-      const title = document.title || "";
-      const descEl =
-        document.querySelector('meta[name="description"]') ||
-        document.querySelector('meta[property="og:description"]');
-      const description = descEl ? descEl.getAttribute("content") || "" : "";
+      await page.goto(validUrl, {
+        waitUntil: "networkidle2",
+        timeout: 20000,
+      });
 
-      const iconEl =
-        document.querySelector('link[rel="icon"]') ||
-        document.querySelector('link[rel="shortcut icon"]') ||
-        document.querySelector('link[rel="apple-touch-icon"]');
-      const favicon = iconEl ? iconEl.getAttribute("href") : "/favicon.ico";
+      // 5-second settle wait per brief requirements
+      await sleep(5000);
 
-      return { title, description, favicon };
-    });
+      // Attempt cookie banner dismissal
+      try {
+        await page.evaluate(() => {
+          const selectors = [
+            'button[id*="cookie" i]',
+            'button[class*="cookie" i]',
+            'button[id*="consent" i]',
+            'button[class*="consent" i]',
+            'button[id*="accept" i]',
+            'button[aria-label*="accept" i]',
+            'button[aria-label*="agree" i]',
+            '#onetrust-accept-btn-handler',
+          ];
+          for (const s of selectors) {
+            const el = document.querySelector(s) as HTMLElement;
+            if (el && typeof el.click === "function") {
+              el.click();
+              break;
+            }
+          }
+        });
+        await sleep(500);
+      } catch {}
+
+      const pageMeta = await page.evaluate(() => {
+        const title = document.title || "";
+        const descEl =
+          document.querySelector('meta[name="description"]') ||
+          document.querySelector('meta[property="og:description"]');
+        const description = descEl ? descEl.getAttribute("content") || "" : "";
+
+        const iconEl =
+          document.querySelector('link[rel="icon"]') ||
+          document.querySelector('link[rel="shortcut icon"]') ||
+          document.querySelector('link[rel="apple-touch-icon"]');
+        const favicon = iconEl ? iconEl.getAttribute("href") : "/favicon.ico";
+
+        return { title, description, favicon };
+      });
+
+      meta = pageMeta;
+      rawBuffer = (await page.screenshot({
+        type: "png",
+        fullPage: false,
+      })) as Buffer;
+
+      await browser.close();
+      browser = null;
+    } catch (browserErr: any) {
+      console.warn("Headless Chromium unavailable, engaging high-resolution web render fallback:", browserErr.message);
+
+      // Fallback: Fetch real HTML metadata directly
+      try {
+        const htmlRes = await fetch(validUrl, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          },
+          signal: AbortSignal.timeout(8000),
+        });
+        const html = await htmlRes.text();
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const descMatch =
+          html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+        if (titleMatch) meta.title = titleMatch[1].trim();
+        if (descMatch) meta.description = descMatch[1].trim();
+      } catch (metaErr: any) {
+        console.warn("HTML metadata fetch fallback error:", metaErr.message);
+      }
+
+      // Fallback: Fetch screenshot from resilient render services
+      const fallbackCaptureUrls = [
+        `https://image.thum.io/get/width/1440/crop/900/noanimate/${validUrl}`,
+        `https://api.microlink.io/?url=${encodeURIComponent(validUrl)}&screenshot=true&embed=screenshot.url`,
+        `https://s0.wp.com/mshots/v1/${encodeURIComponent(validUrl)}?w=1440&h=900`,
+      ];
+
+      for (const fUrl of fallbackCaptureUrls) {
+        try {
+          const res = await fetch(fUrl, { signal: AbortSignal.timeout(15000) });
+          if (res.ok) {
+            const arrayBuf = await res.arrayBuffer();
+            if (arrayBuf.byteLength > 1000) {
+              rawBuffer = Buffer.from(arrayBuf);
+              break;
+            }
+          }
+        } catch (fetchErr: any) {
+          console.warn(`Fallback render service ${fUrl.slice(0, 35)} failed:`, fetchErr.message);
+        }
+      }
+
+      if (!rawBuffer) {
+        throw new Error("Unable to capture site screenshot with both Chromium and serverless render services.");
+      }
+    }
 
     let resolvedFavicon = meta.favicon;
     if (resolvedFavicon && !resolvedFavicon.startsWith("http")) {
@@ -209,15 +291,6 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
         resolvedFavicon = null;
       }
     }
-
-    // 6. Screenshot Above-the-Fold (1440x900)
-    const rawBuffer = (await page.screenshot({
-      type: "png",
-      fullPage: false,
-    })) as Buffer;
-
-    await browser.close();
-    browser = null;
 
     // 7. Process with Sharp: Generate 1440w, 800w, 400w WebP + Base64 Blur Placeholder
     const webp1440 = await sharp(rawBuffer)
@@ -235,7 +308,7 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
       .webp({ quality: 80 })
       .toBuffer();
 
-    // Tiny 20px blur placeholder data URI
+    // 20px blur placeholder data URI
     const blurBuffer = await sharp(rawBuffer)
       .resize(20, 13, { fit: "cover" })
       .webp({ quality: 20 })
