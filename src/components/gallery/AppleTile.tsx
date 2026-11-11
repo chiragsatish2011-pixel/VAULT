@@ -21,7 +21,7 @@ export function AppleTile({ site, isPriority = false, index }: AppleTileProps) {
 
   return (
     <div
-      className="grid-tile relative group overflow-hidden rounded-2xl border border-black/[0.09] dark:border-white/[0.14] bg-white dark:bg-[#121214] aspect-[16/10] select-none shadow-[0_2px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.6)] transition-all duration-300 hover:border-[#0071e3] dark:hover:border-[#2997ff] hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_12px_36px_rgba(0,0,0,0.8)]"
+      className="grid-tile relative group overflow-hidden rounded-2xl border-2 border-black/15 dark:border-white/20 bg-white dark:bg-[#0f0f12] aspect-[16/10] select-none shadow-[0_4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.15)] transition-all duration-300 hover:border-[#0071e3] dark:hover:border-[#2997ff] hover:-translate-y-1.5 hover:shadow-[0_16px_40px_rgba(0,113,227,0.25)] dark:hover:shadow-[0_16px_48px_rgba(41,151,255,0.35)]"
       style={{
         animationDelay: `${Math.min((index % 6) * 50, 300)}ms`,
       }}
@@ -52,10 +52,10 @@ export function AppleTile({ site, isPriority = false, index }: AppleTileProps) {
           />
         </div>
 
-        {/* Crisp Hairline Border Bezel */}
+        {/* Cinematic Inner Bezel Hairline */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/[0.06] dark:ring-white/[0.1] group-hover:ring-2 group-hover:ring-apple-blue dark:group-hover:ring-apple-blue transition-all duration-200 z-20"
+          className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/10 dark:ring-white/15 group-hover:ring-2 group-hover:ring-apple-blue/50 dark:group-hover:ring-apple-blue/60 transition-all duration-200 z-20"
         />
 
         {/* Gradient Overlay & Info: slides up on hover, focus, or tap */}
@@ -68,7 +68,7 @@ export function AppleTile({ site, isPriority = false, index }: AppleTileProps) {
             <h2 className="text-white text-lg sm:text-xl font-semibold tracking-tight truncate drop-shadow-sm">
               {site.name}
             </h2>
-            <span className="shrink-0 inline-flex items-center gap-1 text-[13px] font-medium text-white/95 group-hover:text-apple-blue transition-colors">
+            <span className="shrink-0 inline-flex items-center gap-1.5 text-[13px] font-medium text-white/95 group-hover:text-apple-blue transition-colors bg-white/10 dark:bg-white/15 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
               Visit
               <span aria-hidden="true" className="text-xs transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
                 ↗
@@ -77,7 +77,7 @@ export function AppleTile({ site, isPriority = false, index }: AppleTileProps) {
           </div>
 
           {site.description && (
-            <p className="mt-1.5 text-[13px] sm:text-sm text-white/80 line-clamp-2 leading-relaxed font-normal drop-shadow-sm">
+            <p className="mt-2 text-[13px] sm:text-sm text-white/80 line-clamp-2 leading-relaxed font-normal drop-shadow-sm">
               {site.description}
             </p>
           )}

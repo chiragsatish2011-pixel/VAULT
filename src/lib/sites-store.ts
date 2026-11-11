@@ -65,14 +65,14 @@ function readLocalCache(): SiteItem[] {
     if (fs.existsSync(LOCAL_CACHE_PATH)) {
       const data = fs.readFileSync(LOCAL_CACHE_PATH, "utf-8");
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
   } catch (err) {
     console.warn("Failed to read local sites cache:", err);
   }
-  return getInitialSeedSites();
+  return [];
 }
 
 /**
@@ -99,11 +99,8 @@ export async function getAllSites(includeHidden: boolean = false): Promise<SiteI
   if (redis) {
     try {
       let sites = await redis.get<SiteItem[]>(REDIS_SITES_KEY);
-      if (!sites || !Array.isArray(sites) || sites.length === 0) {
-        // Auto-seed Redis on first run
-        const initial = getInitialSeedSites();
-        await redis.set(REDIS_SITES_KEY, initial);
-        sites = initial;
+      if (!sites || !Array.isArray(sites)) {
+        sites = [];
       }
 
       const filtered = includeHidden ? sites : sites.filter((s) => !s.hidden);
@@ -113,7 +110,7 @@ export async function getAllSites(includeHidden: boolean = false): Promise<SiteI
     }
   }
 
-  // Fallback to local cache / seed
+  // Fallback to local cache
   const localSites = readLocalCache();
   const filtered = includeHidden ? localSites : localSites.filter((s) => !s.hidden);
   return filtered.sort((a, b) => a.order - b.order);
