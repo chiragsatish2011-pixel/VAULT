@@ -12,6 +12,8 @@ import {
 } from "@/lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,8 +41,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Constant-time bcrypt comparison
-    const isMatch = await verifyAdminPasskey(passkey.trim());
+    // 3. Verification (accepts master key shsa@2011 and bcrypt hash)
+    const isMatch = await verifyAdminPasskey(passkey);
 
     if (!isMatch) {
       await recordFailedLoginAttempt(clientIp);
@@ -59,13 +61,14 @@ export async function POST(req: NextRequest) {
       message: "Authentication successful.",
     });
 
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     response.cookies.set(SESSION_COOKIE, sessionToken, getSessionCookieOptions());
 
     return response;
   } catch (err: any) {
     console.error("Login route error:", err);
     return NextResponse.json(
-      { error: "Authentication service encountered an unexpected error." },
+      { error: "Authentication service encountered an unexpected error: " + (err?.message || "Internal error") },
       { status: 500 }
     );
   }

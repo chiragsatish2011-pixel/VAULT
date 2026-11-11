@@ -31,8 +31,8 @@ export function AdminLoginForm() {
         return;
       }
 
-      // Success: reload window to let server render the authenticated dashboard
-      window.location.reload();
+      // Success: replace location to let server render authenticated dashboard
+      window.location.replace("/chirag");
     } catch {
       setError("Unable to connect to authentication gateway.");
       setLoading(false);
