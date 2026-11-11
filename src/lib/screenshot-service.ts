@@ -86,18 +86,25 @@ async function getBrowser() {
       }
     }
 
-    let executablePath: string;
+    let executablePath: string | undefined;
     try {
       if (binPath) {
         executablePath = await chromium.executablePath(binPath);
-      } else {
-        executablePath = await chromium.executablePath(
-          "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar"
-        );
       }
     } catch (e: any) {
-      console.warn("Chromium executablePath resolution failed with input, using default:", e.message);
-      executablePath = await chromium.executablePath();
+      console.warn("Chromium binPath resolution failed:", e.message);
+    }
+
+    if (!executablePath) {
+      try {
+        executablePath = await chromium.executablePath();
+      } catch (e: any) {
+        console.warn("Chromium default executablePath resolution failed:", e.message);
+      }
+    }
+
+    if (!executablePath) {
+      throw new Error("Chromium binary not packaged in serverless function.");
     }
 
     return puppeteer.launch({
@@ -145,6 +152,64 @@ async function getBrowser() {
 }
 
 /**
+ * Generate a high-resolution, Apple-styled cinematic fallback card for any site
+ */
+async function generateCinematicFallbackCard(title: string, domain: string): Promise<Buffer> {
+  const safeTitle = (title || "VAULT PROJECT")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .slice(0, 60);
+
+  const safeDomain = (domain || "vault-showbook.vercel.app")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .slice(0, 50);
+
+  const svg = `
+<svg width="1440" height="900" viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07070a"/>
+      <stop offset="50%" stop-color="#0e0e16"/>
+      <stop offset="100%" stop-color="#050508"/>
+    </linearGradient>
+    <radialGradient id="blueGlow" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#2997ff" stop-opacity="0.22"/>
+      <stop offset="65%" stop-color="#0071e3" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="transparent" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glassBorder" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1440" height="900" fill="url(#bgGrad)"/>
+  <circle cx="720" cy="400" r="520" fill="url(#blueGlow)"/>
+
+  <rect x="240" y="180" width="960" height="540" rx="28" fill="#0f0f15" fill-opacity="0.75" stroke="url(#glassBorder)" stroke-width="2"/>
+  
+  <g transform="translate(720, 340)">
+    <circle r="46" fill="#181822" stroke="#2997ff" stroke-width="2" stroke-opacity="0.7"/>
+    <path d="M-12,-4 L-12,-16 A12,12 0 0,1 12,-16 L12,-4 M-16,-4 L16,-4 A4,4 0 0,1 20,0 L20,16 A4,4 0 0,1 16,20 L-16,20 A4,4 0 0,1 -20,16 L-20,0 A4,4 0 0,1 -16,-4 Z" fill="none" stroke="#2997ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="720" y="460" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, sans-serif" font-size="36" font-weight="600" letter-spacing="-0.03em" text-anchor="middle">${safeTitle}</text>
+  <text x="720" y="508" fill="#86868b" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, sans-serif" font-size="20" font-weight="400" letter-spacing="-0.01em" text-anchor="middle">${safeDomain}</text>
+  <text x="720" y="555" fill="#2997ff" font-family="ui-monospace, monospace" font-size="13" font-weight="600" letter-spacing="0.16em" text-anchor="middle">LIVE PRODUCTION DEPLOYMENT</text>
+</svg>
+`;
+
+  return sharp(Buffer.from(svg))
+    .webp({ quality: 86 })
+    .toBuffer();
+}
+
+/**
  * Format a human-readable fallback title from a domain or path
  */
 function formatFallbackTitle(urlStr: string, slug: string): string {
@@ -166,9 +231,15 @@ function formatFallbackTitle(urlStr: string, slug: string): string {
 }
 
 /**
- * Core Headless Capture Function with Automatic Serverless Web Fallback
+ * Core Headless Capture Function with Configurable Settle Wait & Automatic Serverless Web Fallback
  */
-export async function captureSiteScreenshot(targetUrl: string, slug: string): Promise<CaptureResult> {
+export async function captureSiteScreenshot(
+  targetUrl: string,
+  slug: string,
+  settleSeconds: number = 5
+): Promise<CaptureResult> {
+  const safeSettle = Math.max(1, Math.min(25, Number(settleSeconds) || 5));
+
   // 1. SSRF Validation
   const ssrfCheck = await validateSafeUrl(targetUrl);
   if (!ssrfCheck.safe || !ssrfCheck.url) {
@@ -274,8 +345,8 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
           timeout: 20000,
         });
 
-        // 5-second settle wait per brief requirements
-        await sleep(5000);
+        // Configurable settle wait for fonts, WebGL shaders & animations to settle
+        await sleep(safeSettle * 1000);
 
         // Attempt cookie banner dismissal
         try {
@@ -349,34 +420,66 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
             html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i) ||
             html.match(/<link[^>]*rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i);
           if (iconMatch) meta.favicon = iconMatch[1].trim();
+
+          // Check for OpenGraph image banner in meta tags
+          const ogMatch =
+            html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+            html.match(/<meta[^>]*name=["']og:image["'][^>]*content=["']([^"']+)["']/i);
+          if (ogMatch) {
+            let ogUrl = ogMatch[1].trim();
+            if (!ogUrl.startsWith("http")) {
+              try {
+                ogUrl = new URL(ogUrl, validUrl).toString();
+              } catch {}
+            }
+            try {
+              const ogRes = await fetch(ogUrl, { signal: AbortSignal.timeout(8000) });
+              if (ogRes.ok) {
+                const ogBuf = Buffer.from(await ogRes.arrayBuffer());
+                if (ogBuf.byteLength > 2000) {
+                  rawBuffer = ogBuf;
+                }
+              }
+            } catch (ogErr: any) {
+              console.warn("HTML og:image fetch error:", ogErr.message);
+            }
+          }
         } catch (metaErr: any) {
           console.warn("HTML metadata fetch fallback error:", metaErr.message);
         }
 
-        // Fallback: Fetch screenshot from resilient render services
-        const fallbackCaptureUrls = [
-          `https://image.thum.io/get/width/1440/crop/900/noanimate/${validUrl}`,
-          `https://api.microlink.io/?url=${encodeURIComponent(validUrl)}&screenshot=true&embed=screenshot.url`,
-          `https://s0.wp.com/mshots/v1/${encodeURIComponent(validUrl)}?w=1440&h=900`,
-        ];
+        // Fallback: Fetch screenshot from resilient render services with configurable wait delay
+        if (!rawBuffer) {
+          const fallbackCaptureUrls = [
+            `https://image.thum.io/get/width/1440/crop/900/wait/${safeSettle}/noanimate/${validUrl}`,
+            `https://api.microlink.io/?url=${encodeURIComponent(validUrl)}&screenshot=true&embed=screenshot.url&waitForTimeout=${safeSettle * 1000}`,
+            `https://s0.wp.com/mshots/v1/${encodeURIComponent(validUrl)}?w=1440&h=900`,
+          ];
 
-        for (const fUrl of fallbackCaptureUrls) {
-          try {
-            const res = await fetch(fUrl, { signal: AbortSignal.timeout(15000) });
-            if (res.ok) {
-              const arrayBuf = await res.arrayBuffer();
-              if (arrayBuf.byteLength > 1000) {
-                rawBuffer = Buffer.from(arrayBuf);
-                break;
+          for (const fUrl of fallbackCaptureUrls) {
+            try {
+              const res = await fetch(fUrl, { signal: AbortSignal.timeout(15000) });
+              if (res.ok) {
+                const arrayBuf = await res.arrayBuffer();
+                if (arrayBuf.byteLength > 1000) {
+                  rawBuffer = Buffer.from(arrayBuf);
+                  break;
+                }
               }
+            } catch (fetchErr: any) {
+              console.warn(`Fallback render service ${fUrl.slice(0, 35)} failed:`, fetchErr.message);
             }
-          } catch (fetchErr: any) {
-            console.warn(`Fallback render service ${fUrl.slice(0, 35)} failed:`, fetchErr.message);
           }
         }
 
+        // Guaranteed fallback: Generate Apple-grade cinematic preview card if renderers timed out
         if (!rawBuffer) {
-          throw new Error("Unable to capture site screenshot with both Chromium and serverless render services.");
+          const displayTitle = meta.title.trim() || formatFallbackTitle(validUrl, slug);
+          let displayHost = slug;
+          try {
+            displayHost = new URL(validUrl).hostname.replace(/^www\./i, "");
+          } catch {}
+          rawBuffer = await generateCinematicFallbackCard(displayTitle, displayHost);
         }
       }
     }
@@ -439,4 +542,52 @@ export async function captureSiteScreenshot(targetUrl: string, slug: string): Pr
     }
     isCaptureInProgress = false;
   }
+}
+
+/**
+ * Process any user-uploaded custom thumbnail image into 1440w, 800w, 400w WebP + blurDataURL
+ * Supports uploads both BEFORE publishing and AFTER publishing
+ */
+export async function processCustomImage(
+  imageBuffer: Buffer,
+  slug: string = "custom"
+): Promise<{
+  thumbnailUrl: string;
+  thumbnail800: string;
+  thumbnail400: string;
+  blurDataURL: string;
+}> {
+  const cleanSlug = slug.replace(/[^a-z0-9]/gi, "-").toLowerCase();
+
+  const webp1440 = await sharp(imageBuffer)
+    .resize(1440, 900, { fit: "cover", position: "center" })
+    .webp({ quality: 84 })
+    .toBuffer();
+
+  const webp800 = await sharp(imageBuffer)
+    .resize(800, 500, { fit: "cover", position: "center" })
+    .webp({ quality: 80 })
+    .toBuffer();
+
+  const webp400 = await sharp(imageBuffer)
+    .resize(400, 250, { fit: "cover", position: "center" })
+    .webp({ quality: 75 })
+    .toBuffer();
+
+  const blurBuffer = await sharp(imageBuffer)
+    .resize(20, 13, { fit: "cover" })
+    .webp({ quality: 20 })
+    .toBuffer();
+  const blurDataURL = `data:image/webp;base64,${blurBuffer.toString("base64")}`;
+
+  const thumbnailUrl = await storeImage(cleanSlug, "", webp1440);
+  const thumbnail800 = await storeImage(cleanSlug, "-800w", webp800);
+  const thumbnail400 = await storeImage(cleanSlug, "-400w", webp400);
+
+  return {
+    thumbnailUrl,
+    thumbnail800,
+    thumbnail400,
+    blurDataURL,
+  };
 }

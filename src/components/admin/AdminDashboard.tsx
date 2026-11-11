@@ -27,6 +27,8 @@ import {
   Search,
   ArrowUpRight,
   CheckCircle2,
+  Clock,
+  ImagePlus,
 } from "lucide-react";
 import type { SiteItem } from "@/lib/sites-store";
 import { normalizeUrl } from "@/lib/url-utils";
@@ -36,8 +38,9 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // New site capture state
+  // New site capture state & Settle Wait Timer
   const [inputUrl, setInputUrl] = useState("");
+  const [settleDelay, setSettleDelay] = useState<number>(5);
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureStatus, setCaptureStatus] = useState<string | null>(null);
   const [capturedPreview, setCapturedPreview] = useState<{
@@ -50,6 +53,13 @@ export function AdminDashboard() {
     blurDataURL: string;
   } | null>(null);
   const [previewImgError, setPreviewImgError] = useState(false);
+
+  // Custom thumbnail upload states (before and after push)
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [targetSiteForUpload, setTargetSiteForUpload] = useState<SiteItem | null>(null);
+  const customImageInputRef = useRef<HTMLInputElement>(null);
+  const siteImageInputRef = useRef<HTMLInputElement>(null);
+  const standaloneUploadRef = useRef<HTMLInputElement>(null);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,21 +122,24 @@ export function AdminDashboard() {
     window.location.reload();
   };
 
-  // 1. Capture site by URL
+  // 1. Capture site by URL (with configurable settle timer)
   const handleStartCapture = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputUrl.trim() || isCapturing) return;
 
     setIsCapturing(true);
     setPreviewImgError(false);
-    setCaptureStatus("Launching capture engine and settling viewport...");
+    setCaptureStatus(`Analyzing site & waiting ${settleDelay}s for shaders, fonts & animations to settle...`);
     setError(null);
 
     try {
       const res = await fetch("/api/admin/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: inputUrl.trim() }),
+        body: JSON.stringify({
+          url: inputUrl.trim(),
+          settleSeconds: settleDelay,
+        }),
       });
 
       const data = await res.json();
@@ -150,6 +163,114 @@ export function AdminDashboard() {
       setCaptureStatus(null);
     } finally {
       setIsCapturing(false);
+    }
+  };
+
+  // Upload custom thumbnail BEFORE push (in Review Snapshot card)
+  const handlePreviewCustomImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    setActionNotice("Optimizing custom thumbnail with Sharp...");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("slug", capturedPreview?.name || "custom-preview");
+
+      const res = await fetch("/api/admin/upload-thumbnail", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to process custom image.");
+      }
+
+      const cap = data.capture;
+      if (capturedPreview) {
+        setCapturedPreview({
+          ...capturedPreview,
+          thumbnailUrl: cap.thumbnailUrl,
+          thumbnail800: cap.thumbnail800,
+          thumbnail400: cap.thumbnail400,
+          blurDataURL: cap.blurDataURL,
+        });
+      } else {
+        const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+        setCapturedPreview({
+          url: inputUrl.trim() || "https://",
+          name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+          description: "Custom project thumbnail",
+          thumbnailUrl: cap.thumbnailUrl,
+          thumbnail800: cap.thumbnail800,
+          thumbnail400: cap.thumbnail400,
+          blurDataURL: cap.blurDataURL,
+        });
+      }
+
+      setPreviewImgError(false);
+      setActionNotice("✓ Custom thumbnail applied! Ready to publish.");
+      setTimeout(() => setActionNotice(null), 3500);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsUploadingImage(false);
+      if (customImageInputRef.current) customImageInputRef.current.value = "";
+      if (standaloneUploadRef.current) standaloneUploadRef.current.value = "";
+    }
+  };
+
+  // Upload custom thumbnail AFTER push (on any site in archive)
+  const handleSiteCustomImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !targetSiteForUpload) return;
+
+    const siteId = targetSiteForUpload.id;
+    const siteName = targetSiteForUpload.name;
+    setIsUploadingImage(true);
+    setActionNotice(`Uploading & applying custom thumbnail to "${siteName}"...`);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("siteId", siteId);
+      formData.append("slug", siteName);
+
+      const res = await fetch("/api/admin/upload-thumbnail", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to update site thumbnail.");
+      }
+
+      const updatedSite = data.site || {
+        ...targetSiteForUpload,
+        thumbnailUrl: data.capture.thumbnailUrl,
+        thumbnail800: data.capture.thumbnail800,
+        thumbnail400: data.capture.thumbnail400,
+        blurDataURL: data.capture.blurDataURL,
+      };
+
+      const nextSites = sites.map((s) => (s.id === siteId ? updatedSite : s));
+      setSites(nextSites);
+      try {
+        localStorage.setItem("vault_curated_sites", JSON.stringify(nextSites));
+      } catch {}
+
+      setActionNotice(`✓ Custom thumbnail applied to "${siteName}" in VAULT.`);
+      setTimeout(() => setActionNotice(null), 3500);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsUploadingImage(false);
+      setTargetSiteForUpload(null);
+      if (siteImageInputRef.current) siteImageInputRef.current.value = "";
     }
   };
 
@@ -217,14 +338,17 @@ export function AdminDashboard() {
     }
   };
 
-  // 3. Re-capture single existing site
+  // 3. Re-capture single existing site (with configurable settle timer)
   const handleRecapture = async (site: SiteItem) => {
-    setActionNotice(`Re-capturing ${site.name}...`);
+    setActionNotice(`Re-capturing "${site.name}" (waiting ${settleDelay}s for settle)...`);
     try {
       const res = await fetch("/api/admin/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: site.url }),
+        body: JSON.stringify({
+          url: site.url,
+          settleSeconds: settleDelay,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Recapture failed.");
@@ -418,7 +542,7 @@ export function AdminDashboard() {
   const previewImgSrc = capturedPreview
     ? previewImgError
       ? capturedPreview.blurDataURL || "/captures/default-fallback.webp"
-      : capturedPreview.thumbnailUrl
+      : capturedPreview.thumbnailUrl || capturedPreview.blurDataURL || "/captures/default-fallback.webp"
     : "";
 
   return (
@@ -585,6 +709,65 @@ export function AdminDashboard() {
             </button>
           </form>
 
+          {/* Screenshot Timer & Settle Wait Controls */}
+          <div className="p-4 rounded-2xl bg-neutral-100/80 dark:bg-[#121217] border-2 border-black/10 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
+              <Clock className="w-4 h-4 text-apple-blue shrink-0" />
+              <span className="font-semibold">Capture Settle Timer:</span>
+              <span className="font-mono text-apple-blue font-bold px-2 py-0.5 rounded bg-apple-blue/10 border border-apple-blue/20">
+                {settleDelay}s
+              </span>
+              <span className="text-neutral-500 text-[11px] hidden sm:inline">
+                (controls wait delay for 3D shaders, WebGL, animations & fonts)
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { label: "3s Fast", val: 3 },
+                { label: "5s Standard", val: 5 },
+                { label: "8s Motion", val: 8 },
+                { label: "12s Heavy 3D", val: 12 },
+                { label: "16s WebGL", val: 16 },
+              ].map((preset) => (
+                <button
+                  key={preset.val}
+                  type="button"
+                  onClick={() => setSettleDelay(preset.val)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                    settleDelay === preset.val
+                      ? "bg-apple-blue text-white shadow-xs"
+                      : "bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+
+              <div className="flex items-center gap-1 ml-1 pl-2 border-l border-black/10 dark:border-white/10">
+                <input
+                  type="number"
+                  min={1}
+                  max={25}
+                  value={settleDelay}
+                  onChange={(e) => setSettleDelay(Math.max(1, Math.min(25, Number(e.target.value) || 5)))}
+                  className="w-12 h-6 px-1.5 rounded bg-black/5 dark:bg-white/10 text-center font-mono text-xs text-neutral-900 dark:text-white border border-black/10 dark:border-white/15 focus:outline-none focus:border-apple-blue"
+                />
+                <span className="text-[10px] text-neutral-400">sec</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => standaloneUploadRef.current?.click()}
+                title="Bypass automated capture and upload custom image directly"
+                className="ml-2 px-3 py-1 rounded-lg border border-apple-blue/30 bg-apple-blue/10 hover:bg-apple-blue/20 text-apple-blue font-medium text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <ImagePlus className="w-3.5 h-3.5" />
+                <span>Upload Image Directly</span>
+              </button>
+            </div>
+          </div>
+
           {inputUrlMatch && (
             <div className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-300 animate-fadeIn">
               <div className="flex items-center gap-2.5">
@@ -664,7 +847,7 @@ export function AdminDashboard() {
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="relative aspect-[16/10] rounded-xl overflow-hidden border-2 border-black/20 dark:border-white/25 bg-black shadow-md">
+                <div className="relative aspect-[16/10] rounded-xl overflow-hidden border-2 border-black/20 dark:border-white/25 bg-black shadow-md group">
                   <Image
                     src={previewImgSrc}
                     alt={capturedPreview.name}
@@ -673,6 +856,25 @@ export function AdminDashboard() {
                     onError={() => setPreviewImgError(true)}
                     className="object-cover object-top"
                   />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-3">
+                    <button
+                      type="button"
+                      onClick={() => customImageInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl bg-black/85 hover:bg-black text-white text-xs font-semibold backdrop-blur-md border border-white/20 shadow-lg flex items-center gap-2 cursor-pointer transition-transform active:scale-95"
+                    >
+                      <ImagePlus className="w-4 h-4 text-apple-blue" />
+                      <span>Upload Custom Image</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => customImageInputRef.current?.click()}
+                    title="Upload custom image to replace this snapshot before publishing"
+                    className="sm:hidden absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 text-white text-[10px] font-medium border border-white/20 flex items-center gap-1.5"
+                  >
+                    <ImagePlus className="w-3 h-3" />
+                    <span>Upload Image</span>
+                  </button>
                 </div>
 
                 <div className="md:col-span-2 space-y-4">
@@ -813,8 +1015,15 @@ export function AdminDashboard() {
                           </button>
                         </div>
 
-                        {/* Thumbnail with inline Data URI support */}
-                        <div className="relative w-24 h-15 sm:w-28 sm:h-17 rounded-xl overflow-hidden border-2 border-black/10 dark:border-white/15 bg-black shrink-0 shadow-xs">
+                        {/* Thumbnail with inline Data URI support & click-to-upload */}
+                        <div
+                          onClick={() => {
+                            setTargetSiteForUpload(site);
+                            siteImageInputRef.current?.click();
+                          }}
+                          title="Click to upload custom thumbnail"
+                          className="relative w-24 h-15 sm:w-28 sm:h-17 rounded-xl overflow-hidden border-2 border-black/10 dark:border-white/15 bg-black shrink-0 shadow-xs group/thumb cursor-pointer"
+                        >
                           <Image
                             src={site.thumbnailUrl || site.thumbnail800 || site.blurDataURL || "/captures/default-fallback.webp"}
                             alt={site.name}
@@ -822,6 +1031,9 @@ export function AdminDashboard() {
                             unoptimized
                             className="object-cover object-top"
                           />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+                            <ImagePlus className="w-4 h-4 text-white" />
+                          </div>
                         </div>
 
                         {/* Title & Description */}
@@ -909,11 +1121,25 @@ export function AdminDashboard() {
 
                           {/* Recapture */}
                           <button
+                            type="button"
                             onClick={() => handleRecapture(site)}
                             title="Re-capture fresh thumbnail"
                             className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-black dark:hover:text-white transition-all cursor-pointer"
                           >
                             <RefreshCw className="w-4 h-4" />
+                          </button>
+
+                          {/* Upload Custom Thumbnail (AFTER push) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTargetSiteForUpload(site);
+                              siteImageInputRef.current?.click();
+                            }}
+                            title="Upload custom thumbnail image"
+                            className="p-2 rounded-xl border border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-neutral-500 hover:text-apple-blue dark:hover:text-apple-blue transition-all cursor-pointer"
+                          >
+                            <ImagePlus className="w-4 h-4 text-apple-blue" />
                           </button>
 
                           {/* Edit Details */}
@@ -954,6 +1180,33 @@ export function AdminDashboard() {
             </div>
           )}
         </section>
+
+        {/* Hidden file input for Review Snapshot (BEFORE publish) */}
+        <input
+          ref={customImageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handlePreviewCustomImageUpload}
+        />
+
+        {/* Hidden file input for Existing Site (AFTER publish) */}
+        <input
+          ref={siteImageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleSiteCustomImageUpload}
+        />
+
+        {/* Hidden file input for Standalone Direct Upload */}
+        <input
+          ref={standaloneUploadRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handlePreviewCustomImageUpload}
+        />
       </main>
     </div>
   );

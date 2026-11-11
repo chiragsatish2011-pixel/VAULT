@@ -10,7 +10,7 @@
     "seed": "node scripts/seed-sites.mjs",
     "capture": "node scripts/capture-site.mjs",
     "hash-passkey": "node scripts/hash-passkey.mjs",
-    "test": "tsx tests/ssrf-guard.test.ts && tsx tests/auth.test.ts"
+    "test": "tsx tests/ssrf-guard.test.ts && tsx tests/auth.test.ts && tsx tests/upload-and-timer.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.16.1",

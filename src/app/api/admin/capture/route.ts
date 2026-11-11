@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { url } = body;
+    const { url, settleSeconds, delaySeconds } = body;
+    const waitTime = Number(settleSeconds || delaySeconds) || 5;
 
     if (!url || typeof url !== "string") {
       return NextResponse.json({ error: "URL is required." }, { status: 400 });
@@ -32,8 +33,8 @@ export async function POST(req: NextRequest) {
 
     const slug = parsedUrl.hostname.replace(/[^a-z0-9]/gi, "-").toLowerCase();
 
-    // 2. Perform Capture (Waits 5s for settling, captures above-the-fold, optimizes with Sharp)
-    const result = await captureSiteScreenshot(parsedUrl.toString(), slug);
+    // 2. Perform Capture (Configurable settle delay, captures above-the-fold, optimizes with Sharp)
+    const result = await captureSiteScreenshot(parsedUrl.toString(), slug, waitTime);
 
     return NextResponse.json({
       success: true,

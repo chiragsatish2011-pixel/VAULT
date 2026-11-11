@@ -14,10 +14,13 @@ const nextConfig = {
       'puppeteer-core',
       'sharp',
       'bcryptjs',
-      '@prisma/client'
+      '@prisma/client',
     ],
     outputFileTracingIncludes: {
-      '/api/admin/capture': [
+      '/api/**/*': [
+        './node_modules/@sparticuz/chromium/bin/**',
+      ],
+      '/**': [
         './node_modules/@sparticuz/chromium/bin/**',
       ],
     },
