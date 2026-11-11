@@ -31,6 +31,7 @@ import {
   ImagePlus,
 } from "lucide-react";
 import type { SiteItem } from "@/lib/sites-store";
+import { INITIAL_VAULT_SITES } from "@/lib/initial-sites";
 import { normalizeUrl } from "@/lib/url-utils";
 
 export function AdminDashboard() {
@@ -104,7 +105,13 @@ export function AdminDashboard() {
           body: JSON.stringify({ sites: localSaved }),
         }).catch(() => {});
       } else {
-        setSites([]);
+        // Absolute fallback to compiled 27 initial sites
+        setSites(INITIAL_VAULT_SITES);
+        fetch("/api/admin/sites/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sites: INITIAL_VAULT_SITES }),
+        }).catch(() => {});
       }
     } catch (err: any) {
       setError(err.message);

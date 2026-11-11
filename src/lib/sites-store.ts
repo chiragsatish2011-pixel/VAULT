@@ -1,7 +1,7 @@
 import { Redis } from "@upstash/redis";
 import fs from "fs";
 import path from "path";
-import { FALLBACK_PROJECTS } from "./fallback-projects";
+import { INITIAL_VAULT_SITES } from "./initial-sites";
 import { normalizeUrl } from "./url-utils";
 
 export { normalizeUrl };
@@ -91,7 +91,7 @@ async function writeVercelBlobSites(sites: SiteItem[]): Promise<boolean> {
  */
 function readLocalCache(): SiteItem[] {
   // 1. Global in-memory cache
-  if (Array.isArray(globalThis.__vault_memory_sites)) {
+  if (Array.isArray(globalThis.__vault_memory_sites) && globalThis.__vault_memory_sites.length > 0) {
     return globalThis.__vault_memory_sites;
   }
 
@@ -100,7 +100,7 @@ function readLocalCache(): SiteItem[] {
     if (fs.existsSync(TMP_CACHE_PATH)) {
       const data = fs.readFileSync(TMP_CACHE_PATH, "utf-8");
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         globalThis.__vault_memory_sites = parsed;
         return parsed;
       }
@@ -112,7 +112,7 @@ function readLocalCache(): SiteItem[] {
     if (fs.existsSync(LOCAL_CACHE_PATH)) {
       const data = fs.readFileSync(LOCAL_CACHE_PATH, "utf-8");
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         globalThis.__vault_memory_sites = parsed;
         return parsed;
       }
@@ -121,7 +121,9 @@ function readLocalCache(): SiteItem[] {
     console.warn("Failed to read local sites cache:", err);
   }
 
-  return [];
+  // 4. Guaranteed compiled in-bundle default
+  globalThis.__vault_memory_sites = INITIAL_VAULT_SITES;
+  return INITIAL_VAULT_SITES;
 }
 
 /**
@@ -160,7 +162,7 @@ export async function getAllSites(includeHidden: boolean = false): Promise<SiteI
   if (redis) {
     try {
       const sites = await redis.get<SiteItem[]>(REDIS_SITES_KEY);
-      if (Array.isArray(sites)) {
+      if (Array.isArray(sites) && sites.length > 0) {
         globalThis.__vault_memory_sites = sites;
         const filtered = includeHidden ? sites : sites.filter((s) => !s.hidden);
         return filtered.sort((a, b) => a.order - b.order);
@@ -172,7 +174,7 @@ export async function getAllSites(includeHidden: boolean = false): Promise<SiteI
 
   // 2. Vercel Blob Tier
   const blobSites = await readVercelBlobSites();
-  if (blobSites) {
+  if (blobSites && blobSites.length > 0) {
     globalThis.__vault_memory_sites = blobSites;
     const filtered = includeHidden ? blobSites : blobSites.filter((s) => !s.hidden);
     return filtered.sort((a, b) => a.order - b.order);
@@ -180,7 +182,16 @@ export async function getAllSites(includeHidden: boolean = false): Promise<SiteI
 
   // 3. Local Multi-tier Cache (/tmp + in-memory + file)
   const localSites = readLocalCache();
-  const filtered = includeHidden ? localSites : localSites.filter((s) => !s.hidden);
+  const sitesToUse = (localSites && localSites.length > 0) ? localSites : INITIAL_VAULT_SITES;
+  
+  // Auto-seed Redis if it is connected but empty
+  if (redis) {
+    try {
+      await redis.set(REDIS_SITES_KEY, sitesToUse);
+    } catch {}
+  }
+
+  const filtered = includeHidden ? sitesToUse : sitesToUse.filter((s) => !s.hidden);
   return filtered.sort((a, b) => a.order - b.order);
 }
 

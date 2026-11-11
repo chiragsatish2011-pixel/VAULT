@@ -8,7 +8,10 @@ export function normalizeUrl(urlStr: string): string {
       clean = "https://" + clean;
     }
     const parsed = new URL(clean);
-    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    let host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    if (host.includes("editor-ops-aplha")) {
+      host = host.replace("editor-ops-aplha", "editor-ops-alpha");
+    }
     const pathname = parsed.pathname.replace(/\/+$/, "").replace(/\.git$/i, "").toLowerCase();
     return `${host}${pathname}`;
   } catch {

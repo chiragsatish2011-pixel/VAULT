@@ -246,7 +246,10 @@ export async function captureSiteScreenshot(
     throw new Error(ssrfCheck.error || "Blocked URL due to security policy.");
   }
 
-  const validUrl = ssrfCheck.url.toString();
+  let validUrl = ssrfCheck.url.toString();
+  if (validUrl.includes("editor-ops-aplha.vercel.app")) {
+    validUrl = validUrl.replace("editor-ops-aplha", "editor-ops-alpha");
+  }
 
   // 2. Concurrency Lock
   if (isCaptureInProgress) {
