@@ -35,19 +35,36 @@ export function AppleHero() {
       className="relative pt-32 pb-20 md:pt-44 md:pb-28 lg:pt-52 lg:pb-36 px-6 sm:px-12 flex flex-col items-center text-center select-none overflow-hidden"
       aria-label="VAULT Introduction"
     >
+      {/* Background Ambient Specular Keylight Pool */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] sm:w-[900px] h-[350px] bg-gradient-to-b from-[#0071e3]/12 via-[#2997ff]/5 to-transparent blur-[130px] rounded-full -z-10"
+      />
+
       <div
         style={{
           opacity,
           transform: `translate3d(0, ${translateY}px, 0) scale(${scale})`,
           willChange: opacity < 1 && opacity > 0 ? "transform, opacity" : "auto",
         }}
-        className="max-w-4xl mx-auto transition-transform duration-75 ease-out"
+        className="max-w-4xl mx-auto flex flex-col items-center transition-transform duration-75 ease-out"
       >
-        <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-semibold tracking-[-0.04em] text-black dark:text-white leading-[0.95] mb-5 sm:mb-6">
+        {/* Eyebrow Collection Badge */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-black/10 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.05] backdrop-blur-md mb-6 shadow-xs">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#0071e3] dark:bg-[#2997ff] animate-pulse" />
+          <span className="text-[11px] font-mono tracking-[0.22em] uppercase font-medium text-black/70 dark:text-white/80">
+            Archive // 2026 Collection
+          </span>
+        </div>
+
+        {/* Liquid Titanium / Silver Display Wordmark */}
+        <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-semibold tracking-[-0.05em] leading-[0.92] mb-6 bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-600 dark:from-white dark:via-neutral-100 dark:to-neutral-500 bg-clip-text text-transparent">
           VAULT
         </h1>
-        <p className="text-lg sm:text-xl md:text-2xl text-black/70 dark:text-white/70 font-normal tracking-[-0.015em] max-w-2xl mx-auto leading-relaxed">
-          A gallery of digital experiences, web applications, and interactive systems.
+
+        {/* Subtitle with Calibrated Leading */}
+        <p className="text-lg sm:text-xl md:text-2xl text-black/65 dark:text-white/65 font-normal tracking-[-0.015em] max-w-2xl mx-auto leading-relaxed">
+          An Apple-grade cinematic exhibition of web systems, products, and interactive craft.
         </p>
       </div>
     </section>

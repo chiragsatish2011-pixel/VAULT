@@ -11,9 +11,16 @@ interface AppleGridProps {
 export function AppleGrid({ sites }: AppleGridProps) {
   if (!sites || sites.length === 0) {
     return (
-      <section className="w-full max-w-4xl mx-auto py-20 px-6 flex flex-col items-center justify-center text-center">
-        <div className="w-full p-10 sm:p-14 rounded-3xl border-2 border-dashed border-black/15 dark:border-white/20 bg-black/[0.02] dark:bg-white/[0.02] backdrop-blur-sm flex flex-col items-center">
-          <div className="w-16 h-16 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center mb-6 text-apple-blue">
+      <section className="w-full max-w-4xl mx-auto py-16 sm:py-24 px-6 flex flex-col items-center justify-center text-center">
+        <div className="relative w-full p-10 sm:p-14 rounded-3xl border-2 border-dashed border-black/15 dark:border-white/20 bg-white/40 dark:bg-white/[0.02] backdrop-blur-xl shadow-xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.1)] flex flex-col items-center overflow-hidden">
+          {/* Subtle Ambient Backlight */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-radial-glow opacity-30 -z-10"
+          />
+
+          {/* Aperture / Screen Emblem */}
+          <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-[#121216] border-2 border-black/10 dark:border-white/15 flex items-center justify-center mb-6 text-[#0071e3] dark:text-[#2997ff] shadow-md dark:shadow-[0_8px_24px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.2)]">
             <svg
               className="w-8 h-8"
               fill="none"
@@ -26,15 +33,20 @@ export function AppleGrid({ sites }: AppleGridProps) {
               <line x1="12" y1="17" x2="12" y2="21" />
             </svg>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-white mb-3">
-            VAULT Archive Ready
+
+          <span className="text-[11px] font-mono font-medium tracking-[0.25em] text-[#0071e3] dark:text-[#2997ff] uppercase mb-2">
+            Archive Standby
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-950 dark:text-white mb-3">
+            VAULT Ready for Curation
           </h2>
           <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 max-w-md mx-auto mb-8 font-normal leading-relaxed">
-            All previous entries have been reset. Access the administrative portal to capture and index your web deployments.
+            All previous records have been cleared. Access the administrative console to capture and index your live web deployments with headless rendering.
           </p>
+
           <Link
             href="/chirag"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0071e3] dark:bg-[#2997ff] text-white font-medium text-sm hover:opacity-90 active:scale-95 transition-all shadow-md"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-gradient-to-b from-[#0077ed] to-[#0062c4] hover:from-[#0071e3] hover:to-[#005bb5] active:scale-98 text-white font-medium text-sm transition-all shadow-[0_6px_24px_rgba(0,113,227,0.35),inset_0_1px_0_0_rgba(255,255,255,0.3)] border border-white/20"
           >
             <span>Open Admin Portal</span>
             <span aria-hidden="true">↗</span>

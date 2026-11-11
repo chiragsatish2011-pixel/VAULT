@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { KeyRound, ArrowRight, ShieldCheck, Loader2, Lock, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
+import { Lock, ArrowRight, ShieldCheck, Loader2, Eye, EyeOff, Sparkles } from "lucide-react";
 
 export function AdminLoginForm() {
   const [passkey, setPasskey] = useState("");
@@ -25,57 +26,84 @@ export function AdminLoginForm() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setError(data.error || "Authentication failed.");
+        setError(data.error || "Incorrect passkey. Please verify and try again.");
         setLoading(false);
         return;
       }
 
-      // Success: reload window to let server render the dashboard
+      // Success: reload window to let server render the authenticated dashboard
       window.location.reload();
     } catch {
-      setError("Network or server connection error.");
+      setError("Unable to connect to authentication gateway.");
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen w-full bg-[#fbfbfd] dark:bg-[#000000] text-neutral-900 dark:text-neutral-100 flex flex-col items-center justify-center p-6 selection:bg-[#0071e3] selection:text-white transition-colors duration-300">
-      <div className="w-full max-w-sm flex flex-col items-center">
-        {/* Apple-style minimalist icon with ambient specular glow */}
-        <div className="relative w-20 h-20 rounded-3xl bg-neutral-100 dark:bg-[#121216] border-2 border-black/10 dark:border-white/15 flex items-center justify-center mb-6 shadow-xl dark:shadow-[0_12px_32px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.2)]">
-          <div className="absolute inset-0 rounded-3xl bg-radial-glow opacity-50 pointer-events-none" />
-          <Lock className="w-8 h-8 text-[#0071e3] dark:text-[#2997ff]" />
+    <main className="relative min-h-screen w-full bg-[#050507] text-white flex flex-col items-center justify-center p-6 selection:bg-[#2997ff] selection:text-white overflow-hidden font-sans">
+      {/* Cinematic Ambient Lighting Pools */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-gradient-to-b from-[#0071e3]/20 via-[#2997ff]/5 to-transparent blur-[140px] rounded-full"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-gradient-to-t from-white/[0.03] to-transparent blur-[120px]"
+      />
+
+      {/* Floating Monolith Card */}
+      <div className="relative w-full max-w-[420px] rounded-3xl bg-[#0a0a0d]/80 border border-white/[0.14] p-8 sm:p-10 backdrop-blur-3xl shadow-[0_32px_96px_-12px_rgba(0,0,0,0.95),inset_0_1px_0_0_rgba(255,255,255,0.2)] flex flex-col items-center z-10 transition-all">
+        {/* Subtle top edge specular hairline */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent"
+        />
+
+        {/* Glow Halo Badge */}
+        <div className="relative mb-6">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-b from-white/10 to-white/[0.02] border border-white/20 flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.25)]">
+            <Lock className="w-7 h-7 text-[#2997ff]" />
+          </div>
+          <div className="absolute -inset-1.5 rounded-2xl bg-[#2997ff]/25 blur-lg -z-10 animate-pulse" />
         </div>
 
-        <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.04em] mb-2 text-center text-neutral-950 dark:text-white">
+        {/* Wordmark & Hierarchy */}
+        <span className="text-[10px] font-mono font-medium tracking-[0.28em] text-[#2997ff] uppercase mb-2">
+          Security Clearance
+        </span>
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.04em] bg-gradient-to-b from-white via-neutral-100 to-neutral-400 bg-clip-text text-transparent mb-2 text-center">
           VAULT
         </h1>
-        <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-8 text-center font-normal tracking-wide uppercase">
-          Administrative Console
+        <p className="text-xs sm:text-[13px] text-neutral-400 mb-8 text-center font-normal leading-relaxed max-w-[280px]">
+          Administrative control console for site curation & automated headless renders.
         </p>
 
+        {/* Error Callout */}
         {error && (
-          <div className="w-full mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-medium text-center">
-            {error}
+          <div className="w-full mb-6 py-3 px-4 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs font-medium flex items-center gap-2.5 animate-fadeIn backdrop-blur-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+            <span className="leading-snug">{error}</span>
           </div>
         )}
 
+        {/* Login Form */}
         <form onSubmit={handleSubmit} className="w-full space-y-4">
           <div className="relative w-full">
             <input
               type={showPasskey ? "text" : "password"}
               value={passkey}
               onChange={(e) => setPasskey(e.target.value)}
-              placeholder="Enter Admin Passkey"
+              placeholder="Enter master passkey"
               disabled={loading}
               autoFocus
-              className="w-full h-13 px-4 pr-11 rounded-2xl bg-white dark:bg-[#141418] border-2 border-black/15 dark:border-white/20 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 text-sm focus:outline-none focus:border-[#0071e3] dark:focus:border-[#2997ff] focus:ring-4 focus:ring-[#0071e3]/20 transition-all shadow-sm"
+              className="w-full h-13 px-4.5 pr-12 rounded-xl bg-white/[0.04] border border-white/[0.14] text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-[#2997ff] focus:ring-4 focus:ring-[#2997ff]/15 transition-all shadow-inner font-mono tracking-wide"
             />
             <button
               type="button"
               onClick={() => setShowPasskey(!showPasskey)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors cursor-pointer"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors cursor-pointer"
               tabIndex={-1}
+              aria-label={showPasskey ? "Hide passkey" : "Show passkey"}
             >
               {showPasskey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -84,22 +112,32 @@ export function AdminLoginForm() {
           <button
             type="submit"
             disabled={loading || !passkey.trim()}
-            className="w-full h-13 rounded-2xl bg-[#0071e3] dark:bg-[#2997ff] text-white font-medium text-sm flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.98] disabled:opacity-40 transition-all cursor-pointer shadow-md hover:shadow-lg"
+            className="w-full h-13 rounded-xl bg-gradient-to-b from-[#0077ed] to-[#0062c4] hover:from-[#0071e3] hover:to-[#005bb5] active:scale-[0.98] text-white font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-all cursor-pointer shadow-[0_6px_24px_rgba(0,113,227,0.35),inset_0_1px_0_0_rgba(255,255,255,0.25)] border border-white/20"
           >
             {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
             ) : (
               <>
-                <span>Sign In to Console</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Access Console</span>
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               </>
             )}
           </button>
         </form>
 
-        <div className="mt-12 flex items-center gap-2 text-xs text-neutral-400 dark:text-neutral-600">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Stateless JWT • Bcrypt Verification</span>
+        {/* Bottom Details */}
+        <div className="mt-8 pt-6 border-t border-white/[0.08] w-full flex items-center justify-between text-[11px] text-neutral-500 font-mono">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-neutral-400" />
+            <span>Encrypted Session</span>
+          </div>
+          <Link
+            href="/"
+            className="hover:text-white transition-colors flex items-center gap-1"
+          >
+            <span>Exit to Gallery</span>
+            <span aria-hidden="true">↗</span>
+          </Link>
         </div>
       </div>
     </main>

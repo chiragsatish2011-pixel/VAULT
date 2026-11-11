@@ -84,7 +84,7 @@ export function AdminDashboard() {
     if (!inputUrl.trim() || isCapturing) return;
 
     setIsCapturing(true);
-    setCaptureStatus("Launching Chromium, navigating, and settling for 5s...");
+    setCaptureStatus("Launching headless Chromium & waiting 5s for render settling...");
     setError(null);
 
     try {
@@ -96,7 +96,7 @@ export function AdminDashboard() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Capture failed. Check URL or try local capture CLI.");
+        throw new Error(data.error || "Capture failed. Check URL accessibility or retry.");
       }
 
       const cap = data.capture;
@@ -144,7 +144,7 @@ export function AdminDashboard() {
 
   // 3. Re-capture single existing site
   const handleRecapture = async (site: SiteItem) => {
-    setActionNotice(`Re-capturing ${site.name} (5s settle wait)...`);
+    setActionNotice(`Re-capturing ${site.name} (5s render settle)...`);
     try {
       const res = await fetch("/api/admin/capture", {
         method: "POST",
@@ -247,13 +247,16 @@ export function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#000000] text-neutral-900 dark:text-neutral-100 font-sans selection:bg-[#0071e3] selection:text-white transition-colors duration-300">
       {/* Top Admin Navigation Header */}
-      <header className="sticky top-0 z-40 w-full bg-[#fbfbfd]/80 dark:bg-black/80 backdrop-blur-2xl border-b border-black/[0.08] dark:border-white/[0.1]">
+      <header className="sticky top-0 z-40 w-full bg-[#fbfbfd]/80 dark:bg-black/80 backdrop-blur-2xl border-b border-black/[0.08] dark:border-white/[0.1] shadow-[0_1px_0_0_rgba(0,0,0,0.03)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
         <div className="max-w-6xl mx-auto px-6 sm:px-10 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-lg font-semibold tracking-[-0.03em] text-black dark:text-white hover:opacity-80 transition-opacity">
+            <Link
+              href="/"
+              className="text-lg font-semibold tracking-[-0.03em] bg-gradient-to-b from-neutral-950 to-neutral-700 dark:from-white dark:to-neutral-300 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+            >
               VAULT
             </Link>
-            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-neutral-600 dark:text-neutral-300 font-medium tracking-wide uppercase">
+            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-neutral-600 dark:text-neutral-300 font-mono tracking-widest uppercase border border-black/10 dark:border-white/15">
               Admin
             </span>
           </div>
@@ -283,16 +286,28 @@ export function AdminDashboard() {
       <main className="max-w-6xl mx-auto px-6 sm:px-10 py-10 space-y-10">
         {/* Statistics Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div className="p-5 rounded-2xl border-2 border-black/10 dark:border-white/15 bg-white dark:bg-[#0c0c0e] shadow-sm">
-            <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Total Sites</span>
+          <div className="relative p-6 rounded-2xl border-2 border-black/10 dark:border-white/15 bg-white dark:bg-[#0c0c0e] shadow-sm overflow-hidden">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            />
+            <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider font-mono">Total Sites</span>
             <div className="text-3xl font-semibold mt-1 tracking-tight text-neutral-900 dark:text-white">{sites.length}</div>
           </div>
-          <div className="p-5 rounded-2xl border-2 border-black/10 dark:border-white/15 bg-white dark:bg-[#0c0c0e] shadow-sm">
-            <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Publicly Visible</span>
+          <div className="relative p-6 rounded-2xl border-2 border-black/10 dark:border-white/15 bg-white dark:bg-[#0c0c0e] shadow-sm overflow-hidden">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            />
+            <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider font-mono">Publicly Visible</span>
             <div className="text-3xl font-semibold mt-1 tracking-tight text-emerald-600 dark:text-emerald-400">{liveSitesCount}</div>
           </div>
-          <div className="col-span-2 sm:col-span-1 p-5 rounded-2xl border-2 border-black/10 dark:border-white/15 bg-white dark:bg-[#0c0c0e] shadow-sm">
-            <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Hidden / Staged</span>
+          <div className="col-span-2 sm:col-span-1 relative p-6 rounded-2xl border-2 border-black/10 dark:border-white/15 bg-white dark:bg-[#0c0c0e] shadow-sm overflow-hidden">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            />
+            <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider font-mono">Hidden / Staged</span>
             <div className="text-3xl font-semibold mt-1 tracking-tight text-neutral-400 dark:text-neutral-500">{sites.length - liveSitesCount}</div>
           </div>
         </div>
@@ -315,10 +330,16 @@ export function AdminDashboard() {
         {/* ======================================================== */}
         {/* ADD SITE BY URL (CORE FEATURE)                           */}
         {/* ======================================================== */}
-        <section className="p-8 sm:p-10 rounded-3xl bg-white dark:bg-[#0d0d10] border-2 border-black/15 dark:border-white/20 shadow-md dark:shadow-[0_12px_40px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.15)] space-y-6">
+        <section className="relative p-8 sm:p-10 rounded-3xl bg-white dark:bg-[#0c0c0f] border-2 border-black/15 dark:border-white/20 shadow-xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.18)] space-y-6 overflow-hidden">
+          {/* Top specular edge */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
+          />
+
           <div className="max-w-2xl">
-            <div className="flex items-center gap-2 text-apple-blue text-xs font-semibold uppercase tracking-wider mb-2">
-              <Camera className="w-4 h-4" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0071e3]/10 dark:bg-[#2997ff]/10 border border-[#0071e3]/20 dark:border-[#2997ff]/20 text-[#0071e3] dark:text-[#2997ff] text-xs font-mono uppercase tracking-wider mb-3">
+              <Camera className="w-3.5 h-3.5" />
               <span>Automated Headless Capture</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-neutral-950 dark:text-white">
@@ -338,14 +359,14 @@ export function AdminDashboard() {
                 placeholder="https://my-awesome-website.vercel.app"
                 required
                 disabled={isCapturing}
-                className="w-full h-14 px-5 rounded-2xl bg-neutral-100 dark:bg-[#15151a] border-2 border-black/10 dark:border-white/15 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-[#0071e3] dark:focus:border-[#2997ff] focus:ring-4 focus:ring-[#0071e3]/20 transition-all font-mono"
+                className="w-full h-14 px-5 rounded-2xl bg-neutral-100 dark:bg-[#15151b] border-2 border-black/10 dark:border-white/15 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-[#0071e3] dark:focus:border-[#2997ff] focus:ring-4 focus:ring-[#0071e3]/20 transition-all font-mono shadow-inner"
               />
             </div>
 
             <button
               type="submit"
               disabled={isCapturing || !inputUrl.trim()}
-              className="h-14 px-8 rounded-2xl bg-[#0071e3] dark:bg-[#2997ff] text-white font-medium text-sm flex items-center justify-center gap-2.5 hover:opacity-95 active:scale-98 disabled:opacity-40 transition-all cursor-pointer shrink-0 shadow-md hover:shadow-lg"
+              className="h-14 px-8 rounded-2xl bg-gradient-to-b from-[#0077ed] to-[#0062c4] hover:from-[#0071e3] hover:to-[#005bb5] active:scale-98 text-white font-medium text-sm flex items-center justify-center gap-2.5 disabled:opacity-40 transition-all cursor-pointer shrink-0 shadow-[0_4px_20px_rgba(0,113,227,0.35),inset_0_1px_0_0_rgba(255,255,255,0.25)] border border-white/20"
             >
               {isCapturing ? (
                 <>
@@ -424,13 +445,13 @@ export function AdminDashboard() {
                   <div className="flex items-center gap-3 pt-2">
                     <button
                       onClick={handleConfirmAddSite}
-                      className="px-6 py-2.5 rounded-xl bg-[#0071e3] dark:bg-[#2997ff] text-white text-xs font-semibold hover:opacity-95 cursor-pointer shadow-md"
+                      className="px-6 py-2.5 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold cursor-pointer shadow-md transition-all active:scale-98"
                     >
                       Publish to VAULT
                     </button>
                     <button
                       onClick={() => setCapturedPreview(null)}
-                      className="px-5 py-2.5 rounded-xl bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-medium hover:bg-neutral-300 dark:hover:bg-neutral-700 cursor-pointer"
+                      className="px-5 py-2.5 rounded-xl bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-medium hover:bg-neutral-300 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
                     >
                       Discard
                     </button>
